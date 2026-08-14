@@ -93,6 +93,186 @@ export OPENAI_API_KEY='sk-...'
 
 ## 📖 Usage
 
+### Interactive CLI (Recommended)
+
+The fastest way to get started is the built-in interactive terminal interface — no flags to memorise, just type a number and go.
+
+```bash
+python src/cli.py
+```
+
+#### Main Menu
+
+Every time you launch the CLI you're greeted with:
+
+```text
+  ───────────────────────────────────────────────────────
+         FAIR WORK ACT & AWARDS — RAG SYSTEM
+    Legal document retrieval, made easy.
+
+   Select an action below to get started.
+  ───────────────────────────────────────────────────────
+
+  PROCESS        — Ingest PDF docs → build retrieval index
+  QUERY          — Search the index for relevant passages
+  CHAT           — Interactive Q&A with sourced answers
+  EVALUATE       — Run full evaluation (generate + score)
+
+What would you like to do?
+  ›
+```
+
+#### Processing PDFs — Step by Step
+
+Option **1 (Process)** walks you through everything:
+
+```text
+  ───────────────────────────────────────────────────────
+   WHERE SHOULD WE FIND YOUR PDF DOCUMENTS?
+  ───────────────────────────────────────────────────────
+    src/data/raw (default)
+    Browse for folder …
+    Type custom path …
+
+Where should we find your PDF documents?
+  › src/data/raw
+
+  Found 3 PDF file(s):
+  ───────────────────────────────────────────────────────
+    1. fair_work_act_2009.pdf (458KB)
+    2. award_north_australia_medical.pdf (182KB)
+    3. modern_award_transport.csv (12KB)
+  ───────────────────────────────────────────────────────
+
+Choose PDFs (comma-separated numbers, e.g. 1,3 or 'a' for all):
+    All files
+    1. fair_work_act_2009.pdf
+    2. award_north_australia_medical.pdf
+    3. modern_award_transport.csv
+
+Which OpenAI embedding model?
+    text-embedding-3-large (default, best quality)
+    text-embedding-3-small (faster)
+    text-embedding-ada-002 (legacy)
+    Other (type custom)
+
+Output directory [src/data/processed]: src/data/processed
+
+  Processing 2 PDF(s) …
+
+14:32:01 - INFO - Processing: data/raw/fair_work_act_2009.pdf
+14:32:01 - INFO -   Parsed 312 pages
+14:32:01 - INFO -   Created 1,847 chunks
+14:32:01 - INFO - Processing: data/raw/award_north_australia.pdf
+14:32:01 - INFO -   Parsed 89 pages
+14:32:01 - INFO -   Created 423 chunks
+14:32:02 - INFO - Building embedding index...
+14:32:05 - INFO - Added 2,270 chunks to embedding index
+14:32:05 - INFO - Index built successfully
+
+✓ Processed 2,270 chunks and built index
+```
+
+#### Querying the Index
+
+Option **2 (Query)** — pick an index, type a question, get results instantly:
+
+```text
+How should we access the retrieval index?
+    Load existing index (fairwork_index)
+    Build a fresh index from PDFs
+
+Enter your search query: Who is entitled to annual leave under the Fair Work Act?
+Number of results (k) [10]: 5
+
+Search results for: 'Who is entitled to annual leave under the Fair Work Act?'
+============================================================
+
+[1] fair_work_act_2009 - Section 87
+    Type: provision
+    Score: 0.947
+    Text: An employee who is not a casual employee is entitled to...
+
+[2] fair_work_act_2009 - Section 88
+    Type: provision
+    Score: 0.831
+    Text: Annual leave accumulates during each year of employment...
+```
+
+#### Interactive Chat
+
+Option **3 (Chat)** launches the RAG-powered conversational interface:
+
+```text
+  ───────────────────────────────────────────────────────
+   FAIR WORK ACT & AWARDS RAG CHAT
+============================================================
+Ask questions about Australian workplace law.
+Commands: /help, /clear, /history, /rag <on|off>, /quit
+
+You: What's the minimum notice period for long-term employees?
+
+Assistant: Under s 119 of the Fair Work Act 2009, the minimum
+notice period for an employee with continuous service of more
+than 3 years is **one week** (s 119(2)(c)). For service of
+more than 5 years it increases to two weeks.
+
+Sources:
+  [1] fair_work_act_2009 - Section 119
+      Score: 0.912
+  [2] fair_work_act_2009 - Section 120
+      Score: 0.784
+```
+
+#### Running Evaluation
+
+Option **4 (Evaluate)** orchestrates the full pipeline:
+
+```text
+Number of test queries to generate [100]: 100
+Output directory [src/data/processed]: src/data/processed
+Evaluation output directory [evaluation_set]: evaluation_set
+...
+Running evaluation with 100 queries …
+
+============================================================
+EVALUATION REPORT
+============================================================
+
+Document Summary:
+  Documents processed: 2
+  Chunks created: 2,270
+  Queries generated: 100
+  Annotations: 380
+
+Retrieval Metrics:
+  K=1:    P@1: 0.745  R@1: 0.312  F1@1: 0.441
+  K=3:    P@3: 0.621  R@3: 0.589  F1@3: 0.605
+  K=5:    P@5: 0.558  R@5: 0.712  F1@5: 0.624
+  K=10:   P@10: 0.489  R@10: 0.853  F1@10: 0.620
+
+  Mean Reciprocal Rank (MRR): 0.712
+  Mean Average Precision (MAP): 0.648
+
+  ✓ Precision target met (74.5% >= 90%)
+```
+
+#### Quick Reference
+
+| CLI Option | Shortcut Key | Description                              |
+|:----------:|:------------:|------------------------------------------|
+| **Process** | `1` or `p`  | Select PDFs → build retrieval index      |
+| **Query**   | `2` or `q`  | Search the index for relevant passages   |
+| **Chat**    | `3` or `c`  | Interactive RAG-powered Q&A session      |
+| **Evaluate**| `4` or `e`  | Full evaluation (generate + score)       |
+| Quit        | `q` or `0`  | Exit the CLI                             |
+
+> **Pro tip:** You can also run the quick-launch wrapper from the project root:
+> ```bash
+> ./fairwork
+> ```
+> Or install as a system command with `pip install -e .` and type `fairwork-rag`.
+
 ### Process Documents
 
 Convert raw PDFs into searchable chunks and build the index:

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Convenience launcher — runs cli.py with the correct PYTHONPATH.
+# Usage (from project root):  ./fairwork
+set -euo pipefail
+exec python3 "$(dirname "$0")/src/cli.py" "$@"
