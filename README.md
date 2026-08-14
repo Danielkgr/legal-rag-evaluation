@@ -1,6 +1,6 @@
-# Fair Work Act & Modern Awards RAG System
-
 <div align="center">
+
+# Fair Work Act & Modern Awards RAG System
 
 A **production-grade Retrieval-Augmented Generation (RAG)** system purpose-built for Australian workplace law — engineered to handle the unique challenges of legal document retrieval including heavy cross-referencing, defined-term lookups, and interdependent statutory provisions.
 
