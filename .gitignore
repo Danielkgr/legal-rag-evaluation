@@ -17,9 +17,6 @@ htmlcov/
 .env
 *.local.json
 
-
-
-
 # Runtime data and outputs — user documents and generated artefacts never
 # belong in source history. data/raw/ holds input PDFs, data/processed/ holds
 # chunks and embeddings, evaluation_set/ holds generated tests, and
