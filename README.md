@@ -376,13 +376,14 @@ This generates three categories of test queries with automatically derived relev
 
 | Flag | Command | Default | Description |
 |---|---|---|---|
-| `--pdfs` | `pipeline.py`, `evaluate.py` | required | PDF files to process |
+| `--pdfs` | `pipeline.py` (process mode), `evaluate.py` | required | PDF files to process |
 | `--mode` | `pipeline.py` | `process` | `process`, `query`, or `chat` |
 | `--query` | `pipeline.py` | — | Search query (query mode) |
 | `--k` | `pipeline.py` | `10` | Number of results returned in query mode |
-| `--data-dir` | both | `data` | Base data directory |
-| `--output-dir` | both | `data/processed` | Directory for chunk and index output |
-| `--index-name` | `pipeline.py` | `fairwork_index` | Embedding index name (saved as `<name>_index.json`) |
+| `--data-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data` | Base data directory |
+| `--output-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data/processed` | Directory for chunk and index output |
+| `--load-index` | `pipeline.py`, `chat.py` | off | Load an existing index instead of building one |
+| `--index-name` | `pipeline.py`, `chat.py` | `fairwork_index` | Embedding index name (saved as `<name>_index.json`) |
 | `--num-queries` | `evaluate.py` | `100` | Number of test queries to generate |
 | `--eval-dir` | `evaluate.py` | `evaluation_set` | Directory for the generated evaluation set and report |
 | `--no-print` | `evaluate.py` | off | Skip printing the report |
