@@ -21,7 +21,12 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "fairwork-rag=fair_work_rag.cli:main",
+            "fairwork-rag=cli:main",
         ],
+    },
+    # The test suite imports the pipeline without torch/transformers, so the
+    # dev extra is intentionally tiny (see requirements-dev.txt).
+    extras_require={
+        "dev": ["pytest>=7.0"],
     },
 )

@@ -1,0 +1,3 @@
+# Test-only dependencies (the suite runs without the heavy ML stack).
+# Install alongside the package: pip install -r requirements.txt -r requirements-dev.txt
+pytest>=7.0
