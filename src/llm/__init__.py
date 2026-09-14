@@ -4,16 +4,31 @@ LLM inference module using Gemma 4 12B for local chat interface.
 
 import os
 import json
-import torch
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import logging
 from pathlib import Path
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer
+# `torch` and `transformers` are imported lazily inside GemmaLLM so the
+# retrieval/metrics path can be imported without the multi-gigabyte ML stack.
+# See tests/test_imports.py.
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Shared system prompt for the legal Q&A clients (local Gemma and
+# OpenAI-compatible). Defined here so both classes reference one copy.
+LEGAL_SYSTEM_PROMPT = """You are a legal assistant specialized in Australian workplace law.
+Your task is to answer questions based on the provided legal documents (Fair Work Act 2009 and modern awards).
+
+ Guidelines:
+1. Answer ONLY using information from the provided documents
+2. Cite specific section numbers when referencing provisions
+3. If information is not in the documents, say "I cannot find this information in the provided documents"
+4. For complex questions, break down your reasoning
+5. Be precise and accurate - legal advice requires high precision
+6. If multiple provisions apply, reference all relevant ones
+7. Explain defined terms using the definitions provided in the documents"""
 
 
 @dataclass
@@ -45,6 +60,9 @@ class GemmaLLM:
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
         """
+        import torch
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+
         self.device = device or self._get_device()
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -75,6 +93,7 @@ class GemmaLLM:
     
     def _get_device(self) -> str:
         """Get available device."""
+        import torch
         if torch.cuda.is_available():
             return 'cuda'
         elif torch.backends.mps.is_available():
@@ -98,6 +117,7 @@ class GemmaLLM:
         Returns:
             Generated text
         """
+        import torch
         if self.model is None:
             return "Error: Model not loaded. Please check model path and try again."
         
@@ -157,6 +177,7 @@ class GemmaLLM:
         Returns:
             Model response
         """
+        import torch
         if self.model is None:
             return "Error: Model not loaded."
         
@@ -188,17 +209,97 @@ class GemmaLLM:
     
     def _get_system_prompt(self) -> str:
         """System prompt for legal document Q&A."""
-        return """You are a legal assistant specialized in Australian workplace law.
-Your task is to answer questions based on the provided legal documents (Fair Work Act 2009 and modern awards).
+        return LEGAL_SYSTEM_PROMPT
 
- Guidelines:
-1. Answer ONLY using information from the provided documents
-2. Cite specific section numbers when referencing provisions
-3. If information is not in the documents, say "I cannot find this information in the provided documents"
-4. For complex questions, break down your reasoning
-5. Be precise and accurate - legal advice requires high precision
-6. If multiple provisions apply, reference all relevant ones
-7. Explain defined terms using the definitions provided in the documents"""
+
+class OpenAIChatLLM:
+    """
+    Chat client for any OpenAI-compatible endpoint (for example a local
+    llama.cpp / Ollama / vLLM server exposing /v1/chat/completions).
+
+    This lets the generation side of the pipeline point at a local model
+    server the same way the embedding side already does, instead of requiring
+    the HuggingFace ``transformers`` install path used by GemmaLLM.
+    """
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        model: Optional[str] = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.2
+    ):
+        """
+        Args:
+            base_url: OpenAI-compatible base URL. Falls back to the
+                CHAT_BASE_URL / OPENAI_CHAT_BASE_URL environment variables.
+            model: Model name to request. Falls back to CHAT_MODEL /
+                OPENAI_CHAT_MODEL, then 'local'.
+            max_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.
+        """
+        self.base_url = (
+            base_url
+            or os.getenv("CHAT_BASE_URL")
+            or os.getenv("OPENAI_CHAT_BASE_URL")
+        )
+        self.model = (
+            model
+            or os.getenv("CHAT_MODEL")
+            or os.getenv("OPENAI_CHAT_MODEL")
+            or "local"
+        )
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        # Local servers ignore the key; the SDK still requires a non-empty one.
+        api_key = os.getenv("OPENAI_API_KEY") or "local"
+        from openai import OpenAI
+        self._client = OpenAI(base_url=self.base_url, api_key=api_key)
+        logger.info(
+            f"Initialized OpenAI-compatible chat client -> {self.base_url} ({self.model})"
+        )
+
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Send a chat completion and return the assistant text."""
+        response = self._client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            max_tokens=max_tokens or self.max_tokens,
+            temperature=self.temperature
+        )
+        return (response.choices[0].message.content or "").strip()
+
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Generate a grounded answer for a single prompt."""
+        return self.chat(
+            [
+                {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=max_tokens
+        )
+
+
+def get_llm(**kwargs):
+    """
+    Build the chat client from the environment.
+
+    If an OpenAI-compatible endpoint is configured (CHAT_BASE_URL or
+    OPENAI_CHAT_BASE_URL) return OpenAIChatLLM; otherwise fall back to the
+    local transformers-backed GemmaLLM, preserving the original default.
+    """
+    endpoint = os.getenv("CHAT_BASE_URL") or os.getenv("OPENAI_CHAT_BASE_URL")
+    if endpoint:
+        return OpenAIChatLLM(**kwargs)
+    return GemmaLLM(**kwargs)
 
 
 class LegalChatBot:

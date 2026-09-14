@@ -18,7 +18,7 @@ from data_preprocessing.chunking import LegalChunker
 from data_preprocessing.metadata_extractor import MetadataExtractor
 from embedding import EmbeddingModel, EmbeddingManager
 from retrieval import HybridRetriever
-from llm import GemmaLLM, LegalChatBot
+from llm import GemmaLLM, LegalChatBot, get_llm
 
 logging.basicConfig(
     level=logging.INFO,
@@ -197,7 +197,7 @@ class FairWorkRAGPipeline:
     def chat(
         self,
         query: str,
-        llm: GemmaLLM = None,
+        llm=None,
         use_rag: bool = True
     ) -> Dict:
         """
@@ -215,7 +215,7 @@ class FairWorkRAGPipeline:
             raise ValueError("Index not loaded. Call build_index() or load_index() first.")
         
         if llm is None:
-            llm = GemmaLLM()
+            llm = get_llm()
         
         chatbot = LegalChatBot(self.retriever, llm)
         result = chatbot.answer(query, use_rag=use_rag)
@@ -284,7 +284,7 @@ def main():
         pipeline.load_index(args.index_name)
         
         # Initialize LLM
-        llm = GemmaLLM()
+        llm = get_llm()
         
         # Chat
         result = pipeline.chat(args.query, llm=llm)
