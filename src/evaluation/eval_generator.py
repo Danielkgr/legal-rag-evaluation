@@ -121,7 +121,7 @@ class EvaluationSetGenerator:
         queries = []
         
         # Sample chunks for fact queries
-        sample_chunks = random.sample(self.chunks_by_section.values(), min(count, len(self.chunks_by_section)))
+        sample_chunks = random.sample(list(self.chunks_by_section.values()), min(count, len(self.chunks_by_section)))
         
         for i, chunk_list in enumerate(sample_chunks[:count]):
             chunk = random.choice(chunk_list)
