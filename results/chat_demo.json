@@ -1,0 +1,56 @@
+[
+  {
+    "question": "Under the Spam Act 2003, when may a sender send an actionable message to a person? Cite the relevant section.",
+    "answer": "I cannot find this information in the provided documents.\n\nThe term \"actionable message\" is not mentioned or defined in any of the provided sections of the Spam Act 2003. The documents provided contain the following provisions:\n\n- **Section 1** (Short title) and **Section 2** (Commencement)\n- **Section 7** (Australian link) \u2014 defines when a commercial electronic message has an Australian link\n- **Section 16** (Basic definition of consent, users of account authorised to consent, and when consent may be inferred from publication of an electronic address)\n- **Section 17** (Commercial electronic messages must include accurate sender information)\n\nNone of these provisions address when a sender may send an \"actionable message\" to a person. If you are referring to a specific concept such as \"commercial electronic message\" or the requirements for sending such messages, I would be able to assist based on the relevant sections (e.g., Section 17). However, the specific term \"actionable message\" does not appear in the provided documents.",
+    "sources": [
+      {
+        "document": "spam_act_2003",
+        "section": "17"
+      },
+      {
+        "document": "spam_act_2003",
+        "section": "16"
+      },
+      {
+        "document": "spam_act_2003",
+        "section": null
+      },
+      {
+        "document": "spam_act_2003",
+        "section": "7"
+      },
+      {
+        "document": "spam_act_2003",
+        "section": null
+      }
+    ],
+    "seconds": 8.4
+  },
+  {
+    "question": "Under the Do Not Call Register Act 2006, may a telemarketer call a number listed on the register? Cite the relevant section.",
+    "answer": "# Answer\n\n**General Rule: No**\n\nUnder **section 11(1)** of the Do Not Call Register Act 2006, a person must not make, or cause to be made, a telemarketing call to an Australian number if:\n- (a) the number is registered on the Do Not Call Register; **and**\n- (b) the call is **not** a designated telemarketing call.\n\nThis is reinforced by the simplified outline in **section 10**, which states that \"Unsolicited telemarketing calls must not be made to a number registered on the Do Not Call Register.\"\n\n**Exceptions: When a call may be made**\n\nA telemarketer **may** call a number listed on the register in the following circumstances:\n\n1. **Designated telemarketing call** \u2013 The prohibition under section 11(1) does not apply if the call is a *designated telemarketing call* (as defined in **Schedule 1**).\n\n2. **Consent** \u2013 Under **section 11(2)**, subsection (1) does not apply if:\n   - (a) the relevant account-holder; **or**\n   - (b) a nominee of the relevant account-holder;\n   consented to the making of the call.\n\n   Note that the meaning of *consent* is given by **Schedule 2** (referenced in the definition section, **section 12**), and *nominee* is also defined (referenced in Schedule 2).\n\n**Summary**\n\nA telemarketer may only call a number listed on the Do Not Call Register where the call is a *designated telemarketing call* (Schedule 1) or where the relevant account-holder (or their nominee) has consented to the call (section 11(2)). Otherwise, making such a call is prohibited under **section 11(1)**.",
+    "sources": [
+      {
+        "document": "dnr_act_2006",
+        "section": "10"
+      },
+      {
+        "document": "dnr_act_2006",
+        "section": null
+      },
+      {
+        "document": "dnr_act_2006",
+        "section": "12"
+      },
+      {
+        "document": "dnr_act_2006",
+        "section": null
+      },
+      {
+        "document": "dnr_act_2006",
+        "section": "19"
+      }
+    ],
+    "seconds": 12.5
+  }
+]

@@ -1,0 +1,119 @@
+{
+  "summary": {
+    "n_queries": 8,
+    "documents_in_index": [
+      "dnr_act_2006.pdf",
+      "spam_act_2003.pdf"
+    ],
+    "embedding_model_served": "http://localhost:10001/v1 (local server)",
+    "hit@1_document_accuracy": 0.875,
+    "hit@3_document_accuracy": 1.0,
+    "note": "Document-level routing on 8 hand-picked cross-Act queries; not a general benchmark."
+  },
+  "results": [
+    {
+      "query": "When may a sender of a commercial electronic message rely on the recipient's consent?",
+      "expected": "spam_act_2003",
+      "top1": "spam_act_2003",
+      "top3_docs": [
+        "spam_act_2003",
+        "spam_act_2003",
+        "spam_act_2003"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0323
+    },
+    {
+      "query": "What rules prohibit using a false or misleading sender identity in an email?",
+      "expected": "spam_act_2003",
+      "top1": "spam_act_2003",
+      "top3_docs": [
+        "spam_act_2003",
+        "dnr_act_2006",
+        "spam_act_2003"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0315
+    },
+    {
+      "query": "What is an actionable message under this Act?",
+      "expected": "spam_act_2003",
+      "top1": "spam_act_2003",
+      "top3_docs": [
+        "spam_act_2003",
+        "spam_act_2003",
+        "spam_act_2003"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0288
+    },
+    {
+      "query": "What is the Do Not Call Register and who keeps it?",
+      "expected": "dnr_act_2006",
+      "top1": "dnr_act_2006",
+      "top3_docs": [
+        "dnr_act_2006",
+        "dnr_act_2006",
+        "dnr_act_2006"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.032
+    },
+    {
+      "query": "When may a telemarketer call a number listed on the Do Not Call Register?",
+      "expected": "dnr_act_2006",
+      "top1": "dnr_act_2006",
+      "top3_docs": [
+        "dnr_act_2006",
+        "dnr_act_2006",
+        "dnr_act_2006"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0323
+    },
+    {
+      "query": "How is a telephone number registered on, or removed from, the Do Not Call Register?",
+      "expected": "dnr_act_2006",
+      "top1": "dnr_act_2006",
+      "top3_docs": [
+        "dnr_act_2006",
+        "dnr_act_2006",
+        "dnr_act_2006"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0325
+    },
+    {
+      "query": "What civil penalty applies to a body corporate that breaches the sending rules?",
+      "expected": "spam_act_2003",
+      "top1": "dnr_act_2006",
+      "top3_docs": [
+        "dnr_act_2006",
+        "spam_act_2003",
+        "spam_act_2003"
+      ],
+      "hit@1": false,
+      "hit@3": true,
+      "top1_score": 0.0306
+    },
+    {
+      "query": "Which body administers the register of prohibited telemarketing numbers?",
+      "expected": "dnr_act_2006",
+      "top1": "dnr_act_2006",
+      "top3_docs": [
+        "dnr_act_2006",
+        "dnr_act_2006",
+        "dnr_act_2006"
+      ],
+      "hit@1": true,
+      "hit@3": true,
+      "top1_score": 0.0328
+    }
+  ]
+}
