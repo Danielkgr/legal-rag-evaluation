@@ -79,10 +79,8 @@ Embeddings and chat answers can come from either of two places.  The hosted path
 ### 1. Install
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
+pip install -r requirements.txt
 ```
-
-The dev requirements add only `pytest`.  The tests import the pipeline without `torch` or `transformers`, so they run on a plain Python install.
 
 ### 2. Choose a backend
 
@@ -103,9 +101,14 @@ With `CHAT_BASE_URL` set, generation uses the OpenAI-compatible client.  Without
 
 ### 3. Run the tests
 
+The tests run in an environment of their own, apart from the full install in step 1.
+
 ```bash
+pip install -r requirements-dev.txt
 pytest
 ```
+
+`requirements-dev.txt` holds `pytest` and the five light packages the pipeline imports when it loads.  It leaves out `torch` and `transformers` on purpose.  One test checks that `torch` is absent, because the import tests prove nothing once it is installed, so that test fails in the full environment from step 1.
 
 <br>
 
@@ -191,7 +194,7 @@ The runner generates three kinds of test query, with relevance labels derived au
 
 | Area | Libraries |
 |---|---|
-| **PDF parsing** | `pdfplumber`, `PyMuPDF` |
+| **PDF parsing** | `pdfplumber` |
 | **Keyword search** | `rank-bm25` |
 | **Embeddings and hosted chat** | `openai` |
 | **Local chat** | `transformers` running Gemma 4 (12B) |
@@ -204,7 +207,7 @@ The runner generates three kinds of test query, with relevance labels derived au
 legal-rag-evaluation/
   src/
     data_preprocessing/
-      pdf_parser.py            Structure-preserving PDF parsing (pdfplumber and PyMuPDF)
+      pdf_parser.py            Structure-preserving PDF parsing (pdfplumber)
       chunking.py              Legal-aware chunker that keeps section boundaries
       metadata_extractor.py    Cross-reference and definition detection
     embedding/__init__.py      EmbeddingModel (text-embedding-3-large) and EmbeddingManager (in-memory vectors, JSON index)
@@ -224,7 +227,7 @@ legal-rag-evaluation/
   results/                     Artefacts from the recorded run, with PROVENANCE.md
   tests/                       Import, chat-client, and metric-convention tests
   requirements.txt             Runtime dependencies
-  requirements-dev.txt         Test-only dependencies
+  requirements-dev.txt         Test environment, without torch
 ```
 
 <br>

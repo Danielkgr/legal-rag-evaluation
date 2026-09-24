@@ -11,7 +11,11 @@ import importlib.util
 
 def test_torch_is_not_installed_in_the_minimal_env():
     # If this starts failing the guarantee below is no longer meaningful.
-    assert importlib.util.find_spec("torch") is None
+    assert importlib.util.find_spec("torch") is None, (
+        "torch is installed, so the import tests below cannot show that the "
+        "pipeline loads without it. Run the suite in an environment built from "
+        "requirements-dev.txt alone."
+    )
 
 
 def test_evaluate_imports_without_torch():
