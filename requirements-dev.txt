@@ -1,3 +1,12 @@
-# Test-only dependencies (the suite runs without the heavy ML stack).
-# Install alongside the package: pip install -r requirements.txt -r requirements-dev.txt
+# Test environment (the suite runs without the heavy ML stack).
+# Install this file on its own, not alongside requirements.txt, because
+# tests/test_imports.py fails by design when torch is installed.
+#   pip install -r requirements-dev.txt && pytest
 pytest>=7.0
+
+# The light packages the pipeline imports at module load
+openai>=1.0.0
+rank-bm25>=0.2.2
+pdfplumber>=0.9.0
+numpy>=1.24.0
+tqdm>=4.66.0
