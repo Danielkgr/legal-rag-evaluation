@@ -34,6 +34,7 @@ Your task is to answer questions based on the provided legal documents (Fair Wor
 @dataclass
 class ChatMessage:
     """Represents a chat message."""
+
     role: str  # 'system', 'user', 'assistant'
     content: str
 
@@ -43,17 +44,17 @@ class GemmaLLM:
     Local LLM inference using Gemma 4 12B (quantized).
     Optimized for legal document reasoning and cross-referencing.
     """
-    
+
     def __init__(
         self,
         model_name: str = "google/gemma-4-12b-it-qat-q4_0-gguf",
         device: str = None,
         max_tokens: int = 2048,
-        temperature: float = 0.7
+        temperature: float = 0.7,
     ):
         """
         Initialize the Gemma LLM.
-        
+
         Args:
             model_name: Model name or path (GGUF format)
             device: Device to run on ('cpu', 'cuda', 'mps')
@@ -66,14 +67,13 @@ class GemmaLLM:
         self.device = device or self._get_device()
         self.max_tokens = max_tokens
         self.temperature = temperature
-        
+
         # Load model and tokenizer
         logger.info(f"Loading {model_name} on {self.device}...")
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True
+            model_name, trust_remote_code=True
         )
-        
+
         # For GGUF models, we'd use llama.cpp or gguf library
         # For now, using HuggingFace format
         try:
@@ -81,61 +81,59 @@ class GemmaLLM:
                 model_name,
                 device_map=self.device,
                 trust_remote_code=True,
-                torch_dtype=torch.bfloat16 if self.device == 'cuda' else torch.float32
+                torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
             )
         except Exception as e:
             logger.warning(f"Failed to load {model_name}: {e}")
             logger.info("Trying alternative model path...")
             # Try local path or different format
             self.model = None
-        
+
         logger.info(f"Initialized Gemma LLM on {self.device}")
-    
+
     def _get_device(self) -> str:
         """Get available device."""
         import torch
+
         if torch.cuda.is_available():
-            return 'cuda'
+            return "cuda"
         elif torch.backends.mps.is_available():
-            return 'mps'
-        return 'cpu'
-    
+            return "mps"
+        return "cpu"
+
     def generate(
-        self,
-        prompt: str,
-        max_tokens: int = None,
-        temperature: float = None
+        self, prompt: str, max_tokens: int = None, temperature: float = None
     ) -> str:
         """
         Generate text from prompt.
-        
+
         Args:
             prompt: Input prompt
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
-            
+
         Returns:
             Generated text
         """
         import torch
+
         if self.model is None:
             return "Error: Model not loaded. Please check model path and try again."
-        
+
         max_tokens = max_tokens or self.max_tokens
         temperature = temperature or self.temperature
-        
+
         # Format prompt
         messages = [
             {"role": "system", "content": self._get_system_prompt()},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ]
-        
+
         # Tokenize
         input_ids = self.tokenizer.apply_chat_template(
-            messages,
-            return_tensors="pt"
+            messages, return_tensors="pt"
         ).to(self.device)
-        
+
         # Generate
         with torch.no_grad():
             output = self.model.generate(
@@ -143,15 +141,12 @@ class GemmaLLM:
                 max_new_tokens=max_tokens,
                 temperature=temperature,
                 do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
+                pad_token_id=self.tokenizer.eos_token_id,
             )
-        
+
         # Decode
-        response = self.tokenizer.decode(
-            output[0],
-            skip_special_tokens=True
-        )
-        
+        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
+
         # Extract assistant response
         # Remove the input prompt from output
         full_text = response
@@ -159,36 +154,32 @@ class GemmaLLM:
             parts = full_text.split("assistant")
             if len(parts) > 1:
                 response = parts[-1].strip()
-        
+
         return response
-    
-    def chat(
-        self,
-        messages: List[Dict[str, str]],
-        max_tokens: int = None
-    ) -> str:
+
+    def chat(self, messages: List[Dict[str, str]], max_tokens: int = None) -> str:
         """
         Chat with the model.
-        
+
         Args:
             messages: List of message dicts with 'role' and 'content'
             max_tokens: Maximum tokens to generate
-            
+
         Returns:
             Model response
         """
         import torch
+
         if self.model is None:
             return "Error: Model not loaded."
-        
+
         max_tokens = max_tokens or self.max_tokens
-        
+
         # Tokenize
         input_ids = self.tokenizer.apply_chat_template(
-            messages,
-            return_tensors="pt"
+            messages, return_tensors="pt"
         ).to(self.device)
-        
+
         # Generate
         with torch.no_grad():
             output = self.model.generate(
@@ -196,17 +187,14 @@ class GemmaLLM:
                 max_new_tokens=max_tokens,
                 temperature=self.temperature,
                 do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
+                pad_token_id=self.tokenizer.eos_token_id,
             )
-        
+
         # Decode
-        response = self.tokenizer.decode(
-            output[0],
-            skip_special_tokens=True
-        )
-        
+        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
+
         return response
-    
+
     def _get_system_prompt(self) -> str:
         """System prompt for legal document Q&A."""
         return LEGAL_SYSTEM_PROMPT
@@ -227,7 +215,7 @@ class OpenAIChatLLM:
         base_url: Optional[str] = None,
         model: Optional[str] = None,
         max_tokens: int = 1024,
-        temperature: float = 0.2
+        temperature: float = 0.2,
     ):
         """
         Args:
@@ -239,9 +227,7 @@ class OpenAIChatLLM:
             temperature: Sampling temperature.
         """
         self.base_url = (
-            base_url
-            or os.getenv("CHAT_BASE_URL")
-            or os.getenv("OPENAI_CHAT_BASE_URL")
+            base_url or os.getenv("CHAT_BASE_URL") or os.getenv("OPENAI_CHAT_BASE_URL")
         )
         self.model = (
             model
@@ -254,37 +240,32 @@ class OpenAIChatLLM:
         # Local servers ignore the key; the SDK still requires a non-empty one.
         api_key = os.getenv("OPENAI_API_KEY") or "local"
         from openai import OpenAI
+
         self._client = OpenAI(base_url=self.base_url, api_key=api_key)
         logger.info(
             f"Initialized OpenAI-compatible chat client -> {self.base_url} ({self.model})"
         )
 
     def chat(
-        self,
-        messages: List[Dict[str, str]],
-        max_tokens: Optional[int] = None
+        self, messages: List[Dict[str, str]], max_tokens: Optional[int] = None
     ) -> str:
         """Send a chat completion and return the assistant text."""
         response = self._client.chat.completions.create(
             model=self.model,
             messages=messages,
             max_tokens=max_tokens or self.max_tokens,
-            temperature=self.temperature
+            temperature=self.temperature,
         )
         return (response.choices[0].message.content or "").strip()
 
-    def generate(
-        self,
-        prompt: str,
-        max_tokens: Optional[int] = None
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
         """Generate a grounded answer for a single prompt."""
         return self.chat(
             [
                 {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
         )
 
 
@@ -307,17 +288,17 @@ class LegalChatBot:
     Chatbot for interacting with the RAG system.
     Combines retrieval with LLM generation for legal Q&A.
     """
-    
+
     def __init__(
         self,
         retriever,
         llm: GemmaLLM,
         max_retrieved: int = 10,
-        max_context_tokens: int = 3000
+        max_context_tokens: int = 3000,
     ):
         """
         Initialize the legal chatbot.
-        
+
         Args:
             retriever: HybridRetriever instance
             llm: GemmaLLM instance
@@ -328,62 +309,64 @@ class LegalChatBot:
         self.llm = llm
         self.max_retrieved = max_retrieved
         self.max_context_tokens = max_context_tokens
-        
+
         self.conversation_history: List[Dict[str, str]] = []
         logger.info("Initialized LegalChatBot")
-    
+
     def _build_context(self, query: str) -> Tuple[str, List[Dict]]:
         """
         Build context from retrieved documents.
-        
+
         Args:
             query: User query
-            
+
         Returns:
             Context string and list of source metadata
         """
         # Retrieve relevant chunks
         results = self.retriever.retrieve(query, k=self.max_retrieved)
-        
+
         # Build context
         context_parts = []
         sources = []
-        
+
         for i, result in enumerate(results, 1):
-            section_info = f"Section {result.section_number}" if result.section_number else "Unknown section"
-            
+            section_info = (
+                f"Section {result.section_number}"
+                if result.section_number
+                else "Unknown section"
+            )
+
             chunk_text = f"[{i}] {result.document_name} - {section_info}\nType: {result.chunk_type}\nText: {result.text}"
             context_parts.append(chunk_text)
-            
-            sources.append({
-                'chunk_id': result.chunk_id,
-                'section': result.section_number,
-                'document': result.document_name,
-                'score': result.combined_score
-            })
-        
+
+            sources.append(
+                {
+                    "chunk_id": result.chunk_id,
+                    "section": result.section_number,
+                    "document": result.document_name,
+                    "score": result.combined_score,
+                }
+            )
+
         context = "\n\n".join(context_parts)
         return context, sources
-    
-    def answer(
-        self,
-        query: str,
-        use_rag: bool = True
-    ) -> Dict[str, any]:
+
+    def answer(self, query: str, use_rag: bool = True) -> Dict[str, any]:
         """
         Answer a query using RAG or direct LLM.
-        
+
         Args:
             query: User query
             use_rag: Whether to use retrieval-augmented generation
-            
+
         Returns:
             Dict with 'response', 'sources', and 'metadata'
         """
         if use_rag:
             # Retrieve context
             context, sources = self._build_context(query)
-            
+
             # Build prompt
             prompt = f"""Answer the following question using ONLY the provided legal documents.
 
@@ -406,26 +389,28 @@ Answer:"""
 {query}
 
 Answer:"""
-        
+
         # Generate response
         response = self.llm.generate(prompt)
-        
+
         # Update conversation history
-        self.conversation_history.extend([
-            {"role": "user", "content": query},
-            {"role": "assistant", "content": response}
-        ])
-        
+        self.conversation_history.extend(
+            [
+                {"role": "user", "content": query},
+                {"role": "assistant", "content": response},
+            ]
+        )
+
         return {
-            'response': response,
-            'sources': sources if use_rag else [],
-            'metadata': {
-                'query': query,
-                'use_rag': use_rag,
-                'conversation_length': len(self.conversation_history)
-            }
+            "response": response,
+            "sources": sources if use_rag else [],
+            "metadata": {
+                "query": query,
+                "use_rag": use_rag,
+                "conversation_length": len(self.conversation_history),
+            },
         }
-    
+
     def clear_history(self):
         """Clear conversation history."""
         self.conversation_history = []

@@ -20,11 +20,17 @@ from dataclasses import dataclass
 
 colours = {}
 for code, fg in [
-    ("red", "31"), ("green", "32"), ("yellow", "33"),
-    ("blue", "34"), ("magenta", "35"), ("cyan", "36"), ("white", "97"),
+    ("red", "31"),
+    ("green", "32"),
+    ("yellow", "33"),
+    ("blue", "34"),
+    ("magenta", "35"),
+    ("cyan", "36"),
+    ("white", "97"),
 ]:
     colours[code] = f"\033[{fg}m"
 RESET = "\033[0m"
+
 
 def _c(text: str, colour: str = "white") -> str:
     """Wrap *text* in ANSI colour codes."""
@@ -43,6 +49,7 @@ DEFAULT_EVAL_DIR = PROJECT_DIR / "evaluation_set"
 
 
 # ── data helpers ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class PDFFile:
@@ -73,6 +80,7 @@ def find_pdfs(directory: Path) -> List[PDFFile]:
 
 
 # ── TUI helpers ─────────────────────────────────────────────────────────────
+
 
 def _print_box(title: str, lines: List[str], width: int = 60) -> None:
     """Render *title* + *lines* inside a decorative box."""
@@ -132,6 +140,7 @@ def _confirm(question: str) -> bool:
 
 # ── sub‑menus ───────────────────────────────────────────────────────────────
 
+
 def _choose_pdf_dir(default: Path) -> Path:
     """Let the user pick a directory containing PDFs."""
     options = [
@@ -142,9 +151,7 @@ def _choose_pdf_dir(default: Path) -> Path:
     selected = _menu(["Where should we find your PDF documents?"], options)
     if selected == "browse":
         # Use readline-based simple picker
-        sub_options = [
-            (f"  {p}", str(p)) for p in sorted(Path("/").iterdir())[:10]
-        ]
+        sub_options = [(f"  {p}", str(p)) for p in sorted(Path("/").iterdir())[:10]]
         if not sub_options:
             sub_options = [(f"  {default}", str(default))]
         selected_dir = _menu(["Pick a parent directory:"], sub_options)
@@ -171,7 +178,11 @@ def _choose_pdfs(directory: Path, multiple: bool = True) -> List[str]:
     if multiple:
         print("  ────────────────────────────────────────")
         for i, pdf in enumerate(pdfs, 1):
-            size = f" ({pdf.path.stat().st_size / 1024:.0f}KB)" if pdf.path.is_file() else ""
+            size = (
+                f" ({pdf.path.stat().st_size / 1024:.0f}KB)"
+                if pdf.path.is_file()
+                else ""
+            )
             print(f"    {i}. {pdf.name}{size}")
         print("  ────────────────────────────────────────")
 
@@ -180,7 +191,8 @@ def _choose_pdfs(directory: Path, multiple: bool = True) -> List[str]:
             # Provide a quick "select all" option
             sel = _menu(
                 ["Choose PDFs (comma-separated numbers, e.g. 1,3 or 'a' for all):"],
-                [("  All files", "all")] + [(f"  {i}. {p.name}", str(i)) for i, p in enumerate(pdfs, 1)],
+                [("  All files", "all")]
+                + [(f"  {i}. {p.name}", str(i)) for i, p in enumerate(pdfs, 1)],
             )
         else:
             sel = _menu(
@@ -216,6 +228,7 @@ def _prompt_value(question: str, default=None, validator=None) -> Optional[str]:
 
 # ── workflow: Process PDFs ─────────────────────────────────────────────────
 
+
 def workflow_process_pdf() -> None:
     """Interactive flow to process one or more PDFs through the pipeline."""
     # 1. Choose directory
@@ -247,18 +260,21 @@ def workflow_process_pdf() -> None:
         return
 
     print(f"\n  Processing {len(pdf_paths)} PDF(s) …\n")
-    cmd = [
-        sys.executable, "-m", "legal_rag.pipeline",
-        "--mode", "process",
-        "--pdfs"
-    ] + pdf_paths + [
-        "--output-dir", out_dir,
-        "--embedding-model", model,
-    ]
+    cmd = (
+        [sys.executable, "-m", "legal_rag.pipeline", "--mode", "process", "--pdfs"]
+        + pdf_paths
+        + [
+            "--output-dir",
+            out_dir,
+            "--embedding-model",
+            model,
+        ]
+    )
     subprocess.run(cmd, env={**os.environ})
 
 
 # ── workflow: Query / Search ───────────────────────────────────────────────
+
 
 def workflow_query() -> None:
     """Interactive flow to run a search query against the index."""
@@ -278,17 +294,19 @@ def workflow_query() -> None:
             print("  No PDFs selected — cancelling.")
             return
         out_dir = _prompt_value(
-            "Output directory", default=str(DEFAULT_OUTPUT_DIR),
+            "Output directory",
+            default=str(DEFAULT_OUTPUT_DIR),
             validator=lambda p: Path(p).is_dir(),
         )
         if not out_dir:
             return
         # Build index first
         print(f"\n  Building index from {len(pdf_paths)} PDF(s) …\n")
-        cmd = [
-            sys.executable, "-m", "legal_rag.pipeline",
-            "--mode", "process", "--pdfs"
-        ] + pdf_paths + ["--output-dir", out_dir]
+        cmd = (
+            [sys.executable, "-m", "legal_rag.pipeline", "--mode", "process", "--pdfs"]
+            + pdf_paths
+            + ["--output-dir", out_dir]
+        )
         subprocess.run(cmd, env={**os.environ})
 
     # Now query
@@ -302,11 +320,17 @@ def workflow_query() -> None:
 
     out_dir = DEFAULT_OUTPUT_DIR
     cmd = [
-        sys.executable, "-m", "legal_rag.pipeline",
-        "--mode", "query",
-        "--query", query,
-        "--k", str(k),
-        "--output-dir", str(out_dir),
+        sys.executable,
+        "-m",
+        "legal_rag.pipeline",
+        "--mode",
+        "query",
+        "--query",
+        query,
+        "--k",
+        str(k),
+        "--output-dir",
+        str(out_dir),
         "--load-index",
     ]
     subprocess.run(cmd, env={**os.environ})
@@ -314,13 +338,17 @@ def workflow_query() -> None:
 
 # ── workflow: Chat ─────────────────────────────────────────────────────────
 
+
 def workflow_chat() -> None:
     """Launch the interactive chat interface."""
     # Check for RAG-enabled or direct chat?
     chat_option = _menu(
         ["Choose chat mode:"],
         [
-            ("  RAG chat – ask questions & get sourced answers from the legal corpus", "rag"),
+            (
+                "  RAG chat – ask questions & get sourced answers from the legal corpus",
+                "rag",
+            ),
             ("  Direct LLM – ask the model directly (no retrieval context)", "direct"),
         ],
     )
@@ -335,6 +363,7 @@ def workflow_chat() -> None:
 
 
 # ── workflow: Evaluate ─────────────────────────────────────────────────────
+
 
 def workflow_evaluate() -> None:
     """Interactive flow to run a full evaluation."""
@@ -367,24 +396,28 @@ def workflow_evaluate() -> None:
         return
 
     print(f"\n  Running evaluation with {num_queries} queries …\n")
-    cmd = [
-        sys.executable, "-m", "legal_rag.evaluate",
-        "--pdfs"
-    ] + pdf_paths + [
-        "--num-queries", str(num_queries),
-        "--output-dir", out_dir,
-        "--eval-dir", eval_dir,
-    ]
+    cmd = (
+        [sys.executable, "-m", "legal_rag.evaluate", "--pdfs"]
+        + pdf_paths
+        + [
+            "--num-queries",
+            str(num_queries),
+            "--output-dir",
+            out_dir,
+            "--eval-dir",
+            eval_dir,
+        ]
+    )
     subprocess.run(cmd, env={**os.environ})
 
 
 # ── main menu ───────────────────────────────────────────────────────────────
 
 MENU_ITEMS = [
-    ("1. Process PDFs     ", "process",   "Ingest PDF docs → build retrieval index"),
-    ("2. Query            ", "query",     "Search the index for relevant passages"),
-    ("3. Chat             ", "chat",      "Interactive Q&A with sourced answers"),
-    ("4. Evaluate         ", "evaluate",  "Run full evaluation (generate + score)"),
+    ("1. Process PDFs     ", "process", "Ingest PDF docs → build retrieval index"),
+    ("2. Query            ", "query", "Search the index for relevant passages"),
+    ("3. Chat             ", "chat", "Interactive Q&A with sourced answers"),
+    ("4. Evaluate         ", "evaluate", "Run full evaluation (generate + score)"),
 ]
 
 
@@ -416,7 +449,7 @@ def main() -> None:
                 f"  You can still browse menus here — you'll be prompted when",
                 f"  a key is needed. To set it permanently:",
                 "",
-                f"    {_c('export OPENAI_API_KEY=\'sk-…\'', 'white')}",
+                f"    {_c("export OPENAI_API_KEY='sk-…'", 'white')}",
             ],
         )
 
