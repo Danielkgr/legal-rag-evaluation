@@ -1,6 +1,5 @@
-# Test environment (the suite runs without the heavy ML stack).
-# Install this file on its own, not alongside requirements.txt, because
-# tests/test_imports.py fails by design when torch is installed.
+# Test environment.  The suite runs without the heavy ML stack, and also
+# passes alongside the full install.
 #   pip install -r requirements-dev.txt && pytest
 pytest>=7.0
 
