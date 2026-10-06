@@ -4,7 +4,7 @@
 
 ### Hybrid retrieval over Australian statute, built around the Fair Work Act and modern awards
 
-![10 tests](https://img.shields.io/badge/tests-10-0969da?style=for-the-badge) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![runs fully local](https://img.shields.io/badge/backend-local_or_OpenAI-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
+![CI](https://img.shields.io/github/actions/workflow/status/Danielkgr/legal-rag-evaluation/ci.yml?branch=main&style=for-the-badge&label=CI) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![runs fully local](https://img.shields.io/badge/backend-local_or_OpenAI-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
 
 </div>
 
@@ -23,7 +23,7 @@ Embeddings and chat each work two ways, either against OpenAI or against any loc
 > [!CAUTION]
 > This gives no legal advice and is not a production tool.  It ships no documents, so you supply your own PDFs.
 
-It is a working prototype.  Ten tests cover the import path, the chat client, and the metric conventions.  The pipeline itself is verified by running it, and one such run is committed below.
+It is a working prototype.  The tests cover the chunker, retrieval expansion, the menu and chat, the answer clients, the import path, and the metric conventions, and CI runs them with ruff on Python 3.10 and 3.13.  The pipeline itself is verified by running it, and one such run is committed below.
 
 <br>
 
