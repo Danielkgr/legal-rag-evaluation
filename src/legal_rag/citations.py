@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 _NUMBER = r"\d{1,4}[A-Z]{0,4}"
 _SUBDIVISIONS = r"(?:\([0-9A-Za-z]{1,6}\))*"
@@ -115,3 +115,115 @@ def _range(low: str, high: str) -> List[str]:
     if low.isdigit() and high.isdigit() and 0 < int(high) - int(low) <= 20:
         return [str(n) for n in range(int(low) + 1, int(high) + 1)]
     return [high]
+
+
+@dataclass
+class CitationCheck:
+    """How each provision an answer cites relates to what was retrieved."""
+
+    supported: List[str]
+    outside_retrieved: List[str]
+    not_in_corpus: List[str]
+
+    def as_dict(self) -> dict:
+        return {
+            "supported": self.supported,
+            "outside_retrieved": self.outside_retrieved,
+            "not_in_corpus": self.not_in_corpus,
+        }
+
+    def lines(self) -> List[str]:
+        """A short report for the chat output."""
+        if not (self.supported or self.outside_retrieved or self.not_in_corpus):
+            return ["Section references: none in the answer."]
+        lines = [
+            f"Section references: {len(self.supported)} found in the retrieved text."
+        ]
+        if self.outside_retrieved:
+            lines.append(
+                "  Not in the retrieved text, though in the indexed Acts: "
+                + ", ".join(self.outside_retrieved)
+            )
+        if self.not_in_corpus:
+            lines.append("  Not in the indexed Acts: " + ", ".join(self.not_in_corpus))
+        return lines
+
+
+def verify_citations(
+    answer: str, retrieved: Sequence, corpus: Sequence
+) -> CitationCheck:
+    """
+    Check every section and schedule an answer cites.
+
+    retrieved holds the chunks the model was given and corpus holds every
+    indexed chunk.  Both need document_name, section_number, and metadata
+    with "sections", "schedule", and "document_title".  A reference that
+    names an Act is matched only against that Act.  The check is purely
+    textual: it shows whether a cited provision was in front of the model,
+    not whether the answer reads it correctly.
+    """
+    retrieved_keys = _provision_keys(retrieved)
+    corpus_keys = _provision_keys(corpus)
+    titles = _document_titles(list(corpus) + list(retrieved))
+
+    check = CitationCheck([], [], [])
+    for reference in parse_references(answer):
+        label = (
+            f"s {reference.section}"
+            if reference.section
+            else f"Schedule {reference.schedule}"
+        )
+        if reference.act:
+            label += f" of the {reference.act}"
+        if label in check.supported + check.outside_retrieved + check.not_in_corpus:
+            continue
+        documents = _documents_named(reference.act, titles)
+        keys = {(doc, reference.schedule, reference.section) for doc in documents}
+        if keys & retrieved_keys:
+            check.supported.append(label)
+        elif keys & corpus_keys:
+            check.outside_retrieved.append(label)
+        else:
+            check.not_in_corpus.append(label)
+    return check
+
+
+def _provision_keys(chunks: Sequence) -> set:
+    keys = set()
+    for chunk in chunks:
+        metadata = getattr(chunk, "metadata", None) or {}
+        schedule = metadata.get("schedule")
+        doc = chunk.document_name
+        if schedule:
+            keys.add((doc, str(schedule).upper(), None))
+            continue  # clause numbers inside a schedule are not sections
+        for section in metadata.get("sections") or [chunk.section_number]:
+            if section:
+                keys.add((doc, None, str(section).upper()))
+    return keys
+
+
+def _document_titles(chunks: Sequence) -> dict:
+    titles = {}
+    for chunk in chunks:
+        metadata = getattr(chunk, "metadata", None) or {}
+        title = metadata.get("document_title") or chunk.document_name.replace("_", " ")
+        titles.setdefault(chunk.document_name, normalise_act(title))
+    return titles
+
+
+def _documents_named(act: Optional[str], titles: dict) -> List[str]:
+    if act is None:
+        return list(titles)
+    wanted = normalise_act(act)
+    return [doc for doc, title in titles.items() if _same_act(wanted, title)]
+
+
+def _same_act(first: str, second: str) -> bool:
+    """Equal names, or equal once a year that only one of them gives is dropped."""
+    year = re.compile(r"\s+\d{4}$")
+    if first == second:
+        return True
+    if bool(year.search(first)) != bool(year.search(second)):
+        return year.sub("", first) == year.sub("", second)
+    return False

@@ -88,6 +88,7 @@ python -m legal_rag.pipeline --mode chat --backend claude --query "May a telemar
 | **Hybrid retrieval** | Combines dense vector similarity with BM25 keyword matching through reciprocal rank fusion. |
 | **Cross-reference expansion** | After retrieval, adds up to three sections of the same Act that the retrieved sections cite, such as "section 12" or "Schedule 2".  A reference to another Act is not followed.  Each added chunk is marked as added and scores below everything retrieved. |
 | **Defined-term expansion** | Indexes every term an Act defines.  When a defined term appears in the question or in a retrieved section, adds the chunk that defines it, or the section its definition points to, up to three per question. |
+| **Citation check** | After every answer, from any backend, reads the provisions it cites, such as "s 11(1)", "ss 16-17", or "Schedule 2".  It reports which were in the retrieved text, which exist in the indexed Acts but were not retrieved, and which are not in the indexed Acts at all, and the chat prints the result under the sources.  It shows whether a cited provision was in front of the model, not whether the answer reads it correctly. |
 
 ### Design decisions
 
@@ -251,6 +252,7 @@ legal-rag-evaluation/
     retrieval/__init__.py      HybridRetriever, dense vectors plus rank-bm25 with reciprocal rank fusion
     llm/__init__.py            GemmaLLM (local transformers checkpoint), OpenAIChatLLM (any OpenAI-compatible server), get_llm(), LegalChatBot
     llm/claude.py              ClaudeLLM, answers from retrieved chunks with document citations
+    citations.py               Parses section references and checks an answer's citations against the retrieved text
     evaluation/
       eval_generator.py        Fact, hypothetical, and cross-reference query synthesis
       eval_metrics.py          Precision, recall, MRR, and MAP

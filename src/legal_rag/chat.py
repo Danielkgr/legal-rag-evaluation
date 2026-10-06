@@ -20,6 +20,33 @@ COMMANDS = """Commands:
   /quit          Leave the chat"""
 
 
+def describe_result(result) -> list:
+    """The lines printed under an answer: sources, cited passages, and checks."""
+    lines = []
+    if result["sources"]:
+        lines.append("\nSources:")
+        for i, source in enumerate(result["sources"], 1):
+            added = (
+                f" (added: {source['expansion']})" if source.get("expansion") else ""
+            )
+            section = f", section {source['section']}" if source["section"] else ""
+            lines.append(f"  [{i}] {source['document']}{section}{added}")
+    if result.get("citations"):
+        lines.append("\nCited passages:")
+        for citation in result["citations"]:
+            quote = " ".join(citation["cited_text"].split())
+            if len(quote) > 120:
+                quote = quote[:117] + "..."
+            title = citation["document_title"] or "untitled"
+            lines.append(f'  [{citation["source_index"] + 1}] {title}: "{quote}"')
+    metadata = result.get("metadata", {})
+    if metadata.get("served_by_fallback"):
+        lines.append(f"\nAnswered by the fallback model {metadata.get('model')}.")
+    lines.append("")
+    lines.extend(result.get("check_lines", []))
+    return lines
+
+
 class ChatInterface:
     """Interactive command-line chat that keeps one conversation."""
 
@@ -57,18 +84,10 @@ class ChatInterface:
             self.show(result)
 
     def show(self, result):
-        """Print an answer and the sources it was given."""
+        """Print an answer, its sources, cited passages, and the citation check."""
         print(f"\nAssistant: {result['response']}")
-        if result["sources"]:
-            print("\nSources:")
-            for i, source in enumerate(result["sources"][:5], 1):
-                added = (
-                    f" (added: {source['expansion']})"
-                    if source.get("expansion")
-                    else ""
-                )
-                section = f", section {source['section']}" if source["section"] else ""
-                print(f"  [{i}] {source['document']}{section}{added}")
+        for line in describe_result(result):
+            print(line)
 
     def handle_command(self, command: str):
         """Act on a slash command.  Returns "quit" when the chat should end."""

@@ -322,10 +322,10 @@ def main():
         print("=" * 60)
         print(f"\nAnswer:\n{result['response']}")
 
-        if result["sources"]:
-            print("\nSources:")
-            for source in result["sources"][:5]:
-                print(f"  - {source['document']} - Section {source['section']}")
+        from legal_rag.chat import describe_result
+
+        for line in describe_result(result):
+            print(line)
 
 
 if __name__ == "__main__":
