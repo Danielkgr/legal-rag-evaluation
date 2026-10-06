@@ -2,7 +2,7 @@
 
 # Legal RAG Evaluation
 
-### Hybrid retrieval over Australian statute, built around the Fair Work Act and modern awards
+### Hybrid retrieval and cited answers over Australian legislation
 
 ![CI](https://img.shields.io/github/actions/workflow/status/Danielkgr/legal-rag-evaluation/ci.yml?branch=main&style=for-the-badge&label=CI) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![backend local, OpenAI-compatible, or Claude](https://img.shields.io/badge/backend-local_%7C_OpenAI_%7C_Claude-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
 
@@ -16,7 +16,7 @@
 
 ## What it is
 
-A retrieval-augmented generation (**RAG**) pipeline for Australian workplace law.  It parses PDFs of legislation into section-sized chunks, builds a hybrid index, answers questions with sources through a chat interface, and scores its own retrieval with precision, recall, MRR, and MAP.
+A retrieval-augmented generation (**RAG**) pipeline for Australian legislation.  It parses PDFs of Acts into section-sized chunks, builds a hybrid index, answers questions with sources through a chat interface, checks the sections each answer cites, and scores its own retrieval at the level of the Act and of the section.
 
 Embeddings come from OpenAI or any local OpenAI-compatible server.  Answers come from a local server, a local Gemma checkpoint, or Claude, which cites the exact retrieved text it relies on.  The whole pipeline can therefore run end to end with no commercial key.
 
@@ -98,13 +98,12 @@ flowchart LR
     fuse --> evaluate["Evaluate: routing probe<br/>and section-level harness"]
 ```
 
-
 | Component | Approach |
 |---|---|
 | **Legal-aware chunking** | Cuts each Act at the section headings that start a line, so a section that crosses a page break stays in one chunk.  No text is dropped, contents entries and running headers are not mistaken for headings, and schedule clauses are labelled with their schedule. |
 | **Hybrid retrieval** | Combines dense vector similarity with BM25 keyword matching through reciprocal rank fusion. |
 | **Cross-reference expansion** | After retrieval, adds up to three sections of the same Act that the retrieved sections cite, such as "section 12" or "Schedule 2".  A reference to another Act is not followed.  Each added chunk is marked as added and scores below everything retrieved. |
-| **Defined-term expansion** | Indexes every term an Act defines.  When a defined term appears in the question or in a retrieved section, adds the chunk that defines it, or the section its definition points to, up to three per question. |
+| **Defined-term expansion** | Indexes the terms an Act defines in entries that start a line, such as "Register means the Do Not Call Register".  When a defined term appears in the question or in a retrieved section, adds the chunk that defines it, or the section its definition points to, up to three per question. |
 | **Citation check** | After every answer, from any backend, reads the provisions it cites, such as "s 11(1)", "ss 16-17", or "Schedule 2".  It reports which were in the retrieved text, which exist in the indexed Acts but were not retrieved, and which are not in the indexed Acts at all, and the chat prints the result under the sources.  It shows whether a cited provision was in front of the model, not whether the answer reads it correctly. |
 
 ### Design decisions
@@ -119,7 +118,7 @@ Fixed-size chunking breaks provisions mid-section and makes chunks whose meaning
 
 You need Python 3.10 or later, and your own PDFs.  The repository ships no documents, so put the legislation you want to index in `data/raw/`, which git ignores.
 
-Embeddings and chat answers can come from either of two places.  The hosted path uses an OpenAI API key, with embeddings from `text-embedding-3-large`.  The fully local path uses any OpenAI-compatible embedding server and any OpenAI-compatible chat server, and needs no commercial key.  Only the built-in Gemma path needs a GPU, and it runs on CUDA, Apple MPS, or slowly on CPU.
+Embeddings come from OpenAI, with `text-embedding-3-large`, or from any OpenAI-compatible embedding server.  Answers come from one of three backends: an OpenAI-compatible chat server, hosted or local, Claude, or a local Gemma checkpoint.  The fully local path needs no commercial key.  Only the Gemma path needs a GPU, and it runs on CUDA, Apple MPS, or slowly on CPU.
 
 ### 1. Install
 
@@ -136,6 +135,8 @@ Point the OpenAI client at a server with the standard environment variables.  Lo
 ```bash
 # Option A, hosted OpenAI for both embeddings and chat
 export OPENAI_API_KEY='sk-...'
+export CHAT_BACKEND=openai
+export CHAT_MODEL=<an OpenAI chat model>
 
 # Option B, fully local, with embeddings and chat from OpenAI-compatible servers
 export OPENAI_API_KEY=local
@@ -149,18 +150,17 @@ export CHAT_BACKEND=claude           # or pass --backend claude
 export CLAUDE_EFFORT=high            # low, medium, high, xhigh, or max
 ```
 
-With `CHAT_BASE_URL` set, generation uses the OpenAI-compatible client.  Without it, generation falls back to a local Gemma checkpoint loaded with `transformers`, `google/gemma-4-12B-it` unless `GEMMA_MODEL` names another.  A GGUF file cannot be loaded that way, so serve it with llama.cpp or a similar server and set `CHAT_BASE_URL` instead.  If the checkpoint fails to load, the chat stops with the error rather than answering.  Embeddings always come from `OPENAI_BASE_URL`, which defaults to OpenAI.
+`CHAT_BACKEND`, or `--backend` on the command line, picks the answer backend.  Without it, `CHAT_BASE_URL` selects the OpenAI-compatible client, and with neither set, generation falls back to a local Gemma checkpoint loaded with `transformers`, `google/gemma-4-12B-it` unless `GEMMA_MODEL` names another.  A GGUF file cannot be loaded that way, so serve it with llama.cpp or a similar server and set `CHAT_BASE_URL` instead.  If the checkpoint fails to load, the chat stops with the error rather than answering.  Embeddings always come from `OPENAI_BASE_URL`, which defaults to OpenAI.
 
 ### 3. Run the tests
 
-The tests run in an environment of their own, apart from the full install in step 1.
-
 ```bash
 pip install -r requirements-dev.txt
+ruff check . && ruff format --check .
 pytest
 ```
 
-`requirements-dev.txt` holds `pytest` and the light packages the pipeline imports when it loads.  It leaves out `torch` and `transformers` on purpose.  One test imports the pipeline in a fresh interpreter and checks that neither was loaded, so the suite passes with or without the full install.
+`requirements-dev.txt` holds `pytest`, `ruff`, and the light packages the code imports, including `anthropic` and `httpx2` for the Claude tests, which mock the HTTP layer.  It leaves out `torch` and `transformers` on purpose.  One test imports the pipeline in a fresh interpreter and checks that neither was loaded, so the suite passes with or without the full install.  No test needs a model, an API key, or the network.
 
 <br>
 
@@ -191,8 +191,11 @@ python -m legal_rag.pipeline --mode process --pdfs data/raw/fair_work_act_2009.p
 # Search the index
 python -m legal_rag.pipeline --mode query --query "What is the definition of employee?" --k 10 --load-index
 
-# Chat over the index
-python -m legal_rag.chat --load-index
+# Chat over the index, with the backend from CHAT_BACKEND or --backend
+python -m legal_rag.chat --backend claude
+
+# Ask one question and print the answer, sources, and citation check
+python -m legal_rag.pipeline --mode chat --query "When may a telemarketer call a registered number?"
 ```
 
 Processing writes `data/processed/chunks.json` and an embedding index at `data/processed/embeddings/fairwork_index_index.json`.  The PDF path above is only an example, so point `--pdfs` at your own documents in `data/raw/`.
@@ -217,7 +220,6 @@ The runner generates three kinds of test query, with relevance labels assigned b
 | **Recall@k** | Share of all relevant chunks that were retrieved |
 | **MRR** | Mean reciprocal rank of the first relevant result |
 | **MAP** | Mean average precision across all ranks |
-
 
 ### Section-level evaluation
 
@@ -266,13 +268,26 @@ Retrieval is scored without cross-reference or definition expansion, and a chunk
 | `--k` | `pipeline.py` | `10` | Number of results in query mode |
 | `--data-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data` | Accepted, but no command reads from it yet |
 | `--output-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data/processed` | Directory for `chunks.json` and the index, which goes in its `embeddings/` folder |
-| `--load-index` | `pipeline.py`, `chat.py` | Off | Loads an existing index instead of building one |
+| `--load-index` | `pipeline.py`, `chat.py` | Off | Accepted for compatibility.  Query and chat always load the saved index, and process mode always builds one. |
 | `--index-name` | `pipeline.py`, `chat.py` | `fairwork_index` | Index name, saved as `<name>_index.json` |
 | `--num-queries` | `evaluate.py` | `100` | Number of test queries to generate |
 | `--eval-dir` | `evaluate.py` | `evaluation_set` | Directory for the generated test set and report |
 | `--no-print` | `evaluate.py` | Off | Skips printing the report |
 | `--embedding-model` | `pipeline.py`, `evaluate.py` | `text-embedding-3-large` | Embedding model to request from the OpenAI-compatible server |
 | `--no-rag` | `chat.py` | Off | Starts the chat with retrieval off.  `/rag on` and `/rag off` switch it during the chat. |
+| `--backend` | `chat.py`, `pipeline.py` (chat mode) | `CHAT_BACKEND` | `claude`, `openai`, or `gemma` |
+
+### Environment variables
+
+| Variable | Used for | Default |
+|---|---|---|
+| `OPENAI_API_KEY` | Embeddings, and the OpenAI-compatible chat client.  Any placeholder works for a local server. | None, and embedding needs it |
+| `OPENAI_BASE_URL` | The embedding server | OpenAI |
+| `CHAT_BACKEND` | The answer backend, `claude`, `openai`, or `gemma` | Chosen from `CHAT_BASE_URL` |
+| `CHAT_BASE_URL`, `CHAT_MODEL` | The OpenAI-compatible chat server and model | OpenAI, and `local` |
+| `ANTHROPIC_API_KEY` | Claude | None |
+| `CLAUDE_MODEL`, `CLAUDE_EFFORT` | Claude's model and effort | `claude-opus-5-5`, and `high` |
+| `GEMMA_MODEL` | The local Gemma checkpoint | `google/gemma-4-12B-it` |
 
 ### In code
 
@@ -296,11 +311,11 @@ Retrieval is scored without cross-reference or definition expansion, and a chunk
 legal-rag-evaluation/
   src/legal_rag/
     data_preprocessing/
-      pdf_parser.py            Structure-preserving PDF parsing (pdfplumber)
+      pdf_parser.py            Text extraction with pdfplumber, and the document title from its first page
       chunking.py              Legal-aware chunker that keeps section boundaries
       metadata_extractor.py    Cross-reference and definition detection
     embedding/__init__.py      EmbeddingModel (text-embedding-3-large) and EmbeddingManager (in-memory vectors, JSON index)
-    retrieval/__init__.py      HybridRetriever, dense vectors plus rank-bm25 with reciprocal rank fusion
+    retrieval/__init__.py      HybridRetriever, dense vectors plus rank-bm25 with reciprocal rank fusion, and expansion
     llm/__init__.py            GemmaLLM (local transformers checkpoint), OpenAIChatLLM (any OpenAI-compatible server), get_llm(), LegalChatBot
     llm/claude.py              ClaudeLLM, answers from retrieved chunks with document citations
     citations.py               Parses section references and checks an answer's citations against the retrieved text
@@ -319,8 +334,11 @@ legal-rag-evaluation/
   gold/                        Hand-labelled question sets with verified section numbers (provisional)
   results/                     Artefacts from the recorded run, with PROVENANCE.md
   scripts/                     chat_demo.py, which writes the chat demo format
-  tests/                       Import, chat-client, and metric-convention tests
-  pyproject.toml               Package metadata, the legal-rag command, and pytest settings
+  tests/                       Chunking, expansion, citations, the answer clients, the menu, and the evaluations
+  .github/workflows/ci.yml     Lint, format check, and tests on Python 3.10 and 3.13
+  probe_retrieval.py           The routing probe behind results/retrieval_probe.json
+  fairwork                     Launcher for the menu from a clone, without installing
+  pyproject.toml               Package metadata, the legal-rag command, and pytest and ruff settings
   requirements.txt             Runtime dependencies
   requirements-dev.txt         Test environment, without torch
 ```

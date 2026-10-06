@@ -123,10 +123,10 @@ Contents
 2 Definitions ........................................ 1
 3 Calls to numbers on the Register
 .................................................... 2
-Schedule 1—Exempt calls 3
+Schedule 1\u2014Exempt calls 3
 1 Charities ........................................ 3""",
         """An Act about calls, and for related purposes
-Part 1—Preliminary
+Part 1\u2014Preliminary
 1 Short title
 This Act may be cited as the Toy Act 2024 for every purpose.
 2 Definitions
@@ -137,7 +137,7 @@ Toy Act 2024 2""",
 (1) A person must not make a call to a number on the Register.
 (2) Subsection (1) does not apply to an exempt call (see Schedule 1).
 Toy Act 2024 3""",
-        """Schedule 1—Exempt calls
+        """Schedule 1\u2014Exempt calls
 1 Charities
 A call made by a registered charity is an exempt call.
 2 Emergency services
@@ -156,10 +156,10 @@ Toy Act 2024 4""",
     ]
     assert chunks[0].chunk_type is ChunkType.OTHER
     assert "Contents" in chunks[0].text and "Part 1" not in chunks[0].text
-    assert chunks[1].text.startswith("Part 1—Preliminary\n1 Short title")
+    assert chunks[1].text.startswith("Part 1\u2014Preliminary\n1 Short title")
     assert chunks[2].chunk_type is ChunkType.DEFINITION
     assert chunks[4].chunk_type is ChunkType.SCHEDULE
-    assert chunks[4].text.startswith("Schedule 1—Exempt calls\n1 Charities")
+    assert chunks[4].text.startswith("Schedule 1\u2014Exempt calls\n1 Charities")
     assert _visible("".join(c.text for c in chunks)) == _visible("\n".join(pages))
 
 

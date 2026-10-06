@@ -70,7 +70,7 @@ class HybridRetriever:
         # Tokenize texts
         self.tokenized_texts = []
         for chunk in chunks:
-            # Simple tokenization - could be improved
+            # Lower-cased whitespace tokens, the same for chunks and queries
             tokens = chunk.text.lower().split()
             self.tokenized_texts.append(tokens)
 

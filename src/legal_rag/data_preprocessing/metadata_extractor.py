@@ -18,7 +18,7 @@ from legal_rag.citations import parse_references
 # them out: "Register means the Do Not Call Register." or
 # "commercial electronic message has the meaning given by section 6."
 DEFINITION_ENTRY = re.compile(
-    r"^[ \t]*(?P<term>[A-Za-z][A-Za-z0-9'’ -]{0,60}?)[ \t]+"
+    r"^[ \t]*(?P<term>[A-Za-z][A-Za-z0-9'\u2019 -]{0,60}?)[ \t]+"
     r"(?P<verb>means|includes|has[ \t]+the[ \t]+(?:same[ \t]+)?meaning[ \t]+given"
     r"[ \t]+(?:by|in))\b(?P<rest>[^\n]*)",
     re.MULTILINE,
