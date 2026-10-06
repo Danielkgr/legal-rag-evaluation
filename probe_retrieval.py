@@ -1,18 +1,22 @@
 """Honest, interpretable retrieval probe (no auto-metrics).
 
-The built-in evaluator's auto-annotation marks every chunk relevant to every
-query (247 chunks x 100 queries = 24,700 annotations), so its precision/recall
-numbers are not a meaningful benchmark. This probe instead measures a claim we
-can actually defend: given a question, does the hybrid retriever surface a
-chunk from the CORRECT Act in the top-k? Queries and their expected Act were
-fixed in advance; the accuracy is whatever the run produces.
+The built-in evaluator writes one relevance row for every query and chunk
+(100 queries x 247 chunks = 24,700 rows).  Each of its 40 templated queries
+marks every chunk of its source Act relevant, and its 60 Fair Work Act
+questions have no relevant chunk on this corpus, so its precision and recall
+are not a benchmark.  This probe measures a claim that can be defended: given
+a question, does the hybrid retriever surface a chunk from the correct Act in
+the top k?  Queries and their expected Act were fixed in advance, and the
+accuracy is whatever the run produces.
 """
 
-import os, sys, json
+import json
+import os
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
-from pipeline import FairWorkRAGPipeline
+from legal_rag.pipeline import FairWorkRAGPipeline
 
 # (question, expected document stem). Written before looking at any results.
 PROBE = [

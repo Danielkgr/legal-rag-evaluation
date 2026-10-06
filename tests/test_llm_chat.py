@@ -9,10 +9,8 @@ client so no request leaves the machine.
 
 import types
 
-import pytest
-
-import llm
-from llm import OpenAIChatLLM, get_llm
+from legal_rag import llm
+from legal_rag.llm import OpenAIChatLLM, get_llm
 
 
 class _FakeCompletions:
@@ -40,7 +38,7 @@ def test_generate_wraps_prompt_with_the_legal_system_message():
     # .strip() is applied to the assistant turn.
     assert out == "A grounded answer."
     sent = client._client._record.calls[0]["messages"]
-    assert sent[0] == {"role": "system", "content": llm.LEGAL_SYSTEM_PROMPT}
+    assert sent[0] == {"role": "system", "content": llm.build_system_prompt()}
     assert sent[1] == {"role": "user", "content": "When may a call be made?"}
 
 

@@ -1,29 +1,14 @@
-# Core dependencies
-openai>=1.0.0
-chromadb>=0.4.0
+# Runtime dependencies, including the local Gemma path.  The same list lives
+# in pyproject.toml, where `pip install -e ".[gemma]"` installs it.
+anthropic>=1.11,<2
+numpy>=1.24
+openai>=1.0
+pdfplumber>=0.9
 rank-bm25>=0.2.2
-transformers>=4.35.0
-torch>=2.0.0
-bitsandbytes>=0.41.0
-accelerate>=0.24.0
-sentence-transformers>=2.2.0
+tqdm>=4.66
 
-# PDF processing
-pdfplumber>=0.9.0
-pyMuPDF>=1.22.0
-unstructured>=0.10.0
-pdf2image>=1.16.3
-
-# NLP and text processing
-nltk>=3.8.0
-spacy>=3.6.0
-
-# Evaluation and metrics
-scikit-learn>=1.3.0
-pandas>=2.0.0
-numpy>=1.24.0
-
-# Utilities
-python-dotenv>=1.0.0
-tqdm>=4.66.0
-PyYAML>=6.0.1
+# Local Gemma generation only.  transformers needs accelerate whenever a
+# device_map is passed, which GemmaLLM does, although nothing imports it.
+accelerate>=0.24
+torch>=2.0
+transformers>=4.35

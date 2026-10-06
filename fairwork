@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Convenience launcher — runs cli.py with the correct PYTHONPATH.
-# Usage (from project root):  ./fairwork
+# Launcher for a clone that has not been installed with pip.  It puts src/ on
+# PYTHONPATH and runs the interactive menu.  Run it from the project root so
+# the menu's default folders (data/raw, data/processed) resolve.
+#   ./fairwork
 set -euo pipefail
-exec python3 "$(dirname "$0")/src/cli.py" "$@"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONPATH="$ROOT/src${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m legal_rag.cli "$@"
