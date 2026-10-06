@@ -14,11 +14,8 @@ from legal_rag.data_preprocessing.chunking import LegalChunker
 from legal_rag.data_preprocessing.metadata_extractor import MetadataExtractor
 from legal_rag.embedding import EmbeddingModel, EmbeddingManager
 from legal_rag.retrieval import HybridRetriever
-from legal_rag.llm import GemmaLLM, LegalChatBot, get_llm
+from legal_rag.llm import LegalChatBot, describe_corpus, get_llm
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +54,9 @@ class FairWorkRAGPipeline:
 
         # Embedding
         self.embedding_model = EmbeddingModel(model_name=embedding_model)
-        self.embedding_manager = EmbeddingManager(self.embedding_model)
+        self.embedding_manager = EmbeddingManager(
+            self.embedding_model, storage_path=str(self.output_dir / "embeddings")
+        )
 
         # Retrieval
         self.retriever = None  # Will be set after embedding
@@ -109,6 +108,7 @@ class FairWorkRAGPipeline:
                     "document_name": Path(pdf_path).stem,
                     "chunk_type": chunk.chunk_type.value,
                     "metadata": {
+                        "document_title": doc.title,
                         "page_numbers": chunk.page_numbers,
                         "heading": chunk.metadata.get("heading", ""),
                         "sections": chunk.metadata.get("sections", []),
@@ -124,7 +124,7 @@ class FairWorkRAGPipeline:
 
         return all_chunks
 
-    def build_index(self, chunks: List[Dict]):
+    def build_index(self, chunks: List[Dict], index_name: str = "fairwork_index"):
         """
         Build vector and BM25 index from chunks.
 
@@ -136,7 +136,7 @@ class FairWorkRAGPipeline:
         logger.info(f"Added {len(records)} chunks to embedding index")
 
         # Save index
-        self.embedding_manager.save_index("fairwork_index")
+        self.embedding_manager.save_index(index_name)
 
         # Initialize retriever
         self.retriever = HybridRetriever(self.embedding_manager, alpha=0.5, beta=0.5)
@@ -205,17 +205,34 @@ class FairWorkRAGPipeline:
                 "Index not loaded. Call build_index() or load_index() first."
             )
 
-        if llm is None:
-            llm = get_llm()
+        return self.chatbot(llm).answer(query, use_rag=use_rag)
 
-        chatbot = LegalChatBot(self.retriever, llm)
-        result = chatbot.answer(query, use_rag=use_rag)
+    def corpus_description(self) -> str:
+        """Name the indexed documents, for the system prompt."""
+        titles = [
+            r.metadata.get("document_title") or r.document_name
+            for r in self.embedding_manager.embeddings
+        ]
+        return describe_corpus(titles)
 
-        return result
+    def chatbot(self, llm=None) -> LegalChatBot:
+        """
+        A chatbot over the loaded index.  Keep one per conversation, since it
+        holds the earlier turns it sends with each new question.
+        """
+        if not self.retriever:
+            raise ValueError(
+                "Index not loaded. Call build_index() or load_index() first."
+            )
+        return LegalChatBot(
+            self.retriever,
+            llm if llm is not None else get_llm(),
+            corpus_description=self.corpus_description(),
+        )
 
 
-def main():
-    """Main entry point."""
+def build_arg_parser() -> argparse.ArgumentParser:
+    """The command-line options, shared with the menu's tests."""
     parser = argparse.ArgumentParser(description="Fair Work Act RAG Pipeline")
     parser.add_argument("--pdfs", nargs="+", help="PDF files to process")
     parser.add_argument(
@@ -232,11 +249,27 @@ def main():
     )
     parser.add_argument("--load-index", action="store_true", help="Load existing index")
     parser.add_argument("--index-name", default="fairwork_index", help="Index name")
+    parser.add_argument(
+        "--embedding-model",
+        default="text-embedding-3-large",
+        help="Embedding model name on the OpenAI-compatible server",
+    )
+    return parser
 
-    args = parser.parse_args()
 
-    # Initialize pipeline
-    pipeline = FairWorkRAGPipeline(data_dir=args.data_dir, output_dir=args.output_dir)
+def main():
+    """Main entry point."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    args = build_arg_parser().parse_args()
+
+    pipeline = FairWorkRAGPipeline(
+        data_dir=args.data_dir,
+        output_dir=args.output_dir,
+        embedding_model=args.embedding_model,
+    )
 
     if args.mode == "process":
         if not args.pdfs:
@@ -253,7 +286,7 @@ def main():
         logger.info(f"Saved {len(chunks)} chunks to {chunks_file}")
 
         # Build index
-        pipeline.build_index(chunks)
+        pipeline.build_index(chunks, index_name=args.index_name)
 
         print(f"Processed {len(chunks)} chunks and built index")
 

@@ -17,9 +17,6 @@ from legal_rag.retrieval import HybridRetriever
 from legal_rag.evaluation.eval_generator import EvaluationSetGenerator
 from legal_rag.evaluation.eval_metrics import EvaluationMetrics
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
 
 
@@ -205,8 +202,8 @@ class EvaluationRunner:
             print(f"✗ Precision below target ({precision_10:.1%} < 90%)")
 
 
-def main():
-    """Main entry point."""
+def build_arg_parser() -> argparse.ArgumentParser:
+    """The command-line options, shared with the menu's tests."""
     parser = argparse.ArgumentParser(description="Fair Work RAG Evaluation Runner")
     parser.add_argument("--pdfs", nargs="+", required=True, help="PDF files to process")
     parser.add_argument(
@@ -220,8 +217,21 @@ def main():
         "--eval-dir", default="evaluation_set", help="Evaluation directory"
     )
     parser.add_argument("--no-print", action="store_true", help="Skip printing report")
+    parser.add_argument(
+        "--embedding-model",
+        default="text-embedding-3-large",
+        help="Embedding model name on the OpenAI-compatible server",
+    )
+    return parser
 
-    args = parser.parse_args()
+
+def main():
+    """Main entry point."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    args = build_arg_parser().parse_args()
 
     # Check for API key
     if not os.getenv("OPENAI_API_KEY"):
@@ -232,7 +242,10 @@ def main():
 
     # Initialize runner
     runner = EvaluationRunner(
-        data_dir=args.data_dir, output_dir=args.output_dir, eval_dir=args.eval_dir
+        data_dir=args.data_dir,
+        output_dir=args.output_dir,
+        eval_dir=args.eval_dir,
+        embedding_model=args.embedding_model,
     )
 
     # Run evaluation
