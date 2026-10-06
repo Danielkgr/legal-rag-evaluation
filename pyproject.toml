@@ -21,13 +21,14 @@ dependencies = [
 
 [project.optional-dependencies]
 # The local Gemma path loads a checkpoint with transformers.  It is the only
-# part of the project that needs torch.
+# part of the project that needs torch.  transformers needs accelerate whenever
+# a device_map is passed, which GemmaLLM does, although nothing imports it.
 gemma = [
     "accelerate>=0.24",
     "torch>=2.0",
     "transformers>=4.35",
 ]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
 legal-rag = "legal_rag.cli:main"

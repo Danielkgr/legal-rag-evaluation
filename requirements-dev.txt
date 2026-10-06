@@ -1,11 +1,12 @@
 # Test environment.  The suite runs without the heavy ML stack, and also
 # passes alongside the full install.
 #   pip install -r requirements-dev.txt && pytest
-pytest>=7.0
+pytest>=8.0
+ruff>=0.6
 
 # The light packages the pipeline imports at module load
-openai>=1.0.0
+numpy>=1.24
+openai>=1.0
+pdfplumber>=0.9
 rank-bm25>=0.2.2
-pdfplumber>=0.9.0
-numpy>=1.24.0
-tqdm>=4.66.0
+tqdm>=4.66
