@@ -1,213 +1,178 @@
 """
-LLM inference module using Gemma 4 12B for local chat interface.
+Answer generation over retrieved legislation.
+
+Two local backends live here: GemmaLLM, which loads a checkpoint with
+transformers, and OpenAIChatLLM, which talks to any OpenAI-compatible server.
+get_llm() picks one from the environment, and LegalChatBot joins retrieval to
+whichever backend it is given.
 """
 
-import os
-import json
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
 import logging
-from pathlib import Path
+import os
+from typing import Dict, List, Optional, Sequence, Tuple
 
 # `torch` and `transformers` are imported lazily inside GemmaLLM so the
-# retrieval/metrics path can be imported without the multi-gigabyte ML stack.
-# See tests/test_imports.py.
+# retrieval and metrics path can be imported without the multi-gigabyte ML
+# stack.  See tests/test_imports.py.
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Shared system prompt for the legal Q&A clients (local Gemma and
-# OpenAI-compatible). Defined here so both classes reference one copy.
-LEGAL_SYSTEM_PROMPT = """You are a legal assistant specialized in Australian workplace law.
-Your task is to answer questions based on the provided legal documents (Fair Work Act 2009 and modern awards).
-
- Guidelines:
-1. Answer ONLY using information from the provided documents
-2. Cite specific section numbers when referencing provisions
-3. If information is not in the documents, say "I cannot find this information in the provided documents"
-4. For complex questions, break down your reasoning
-5. Be precise and accurate - legal advice requires high precision
-6. If multiple provisions apply, reference all relevant ones
-7. Explain defined terms using the definitions provided in the documents"""
+DEFAULT_GEMMA_MODEL = "google/gemma-4-12B-it"
 
 
-@dataclass
-class ChatMessage:
-    """Represents a chat message."""
+def describe_corpus(titles: Sequence[str]) -> str:
+    """Name the indexed documents in a phrase, such as "the A and the B"."""
+    unique = list(dict.fromkeys(t.strip() for t in titles if t and t.strip()))
+    if not unique:
+        return "the indexed documents"
+    if len(unique) == 1:
+        return f"the {unique[0]}"
+    return ", ".join(f"the {t}" for t in unique[:-1]) + f" and the {unique[-1]}"
 
-    role: str  # 'system', 'user', 'assistant'
-    content: str
+
+def build_system_prompt(corpus: str = "the indexed documents") -> str:
+    """The system prompt shared by every backend, naming what was indexed."""
+    return f"""You are a legal research assistant for Australian legislation.
+You answer questions using extracts from {corpus}.
+
+Guidelines:
+1. Answer only from the provided extracts.
+2. Cite the section number of every provision you rely on, for example "s 11(1)".
+3. If the extracts do not contain the answer, say "I cannot find this information in the provided documents".
+4. For complex questions, set out your reasoning step by step.
+5. Be precise.  Say when a provision has exceptions or conditions.
+6. If several provisions apply, cite each of them.
+7. Explain defined terms using the definitions in the extracts."""
+
+
+def _messages(
+    prompt: str, history: Optional[Sequence[Dict[str, str]]], system: Optional[str]
+) -> List[Dict[str, str]]:
+    return [
+        {"role": "system", "content": system or build_system_prompt()},
+        *(history or []),
+        {"role": "user", "content": prompt},
+    ]
 
 
 class GemmaLLM:
     """
-    Local LLM inference using Gemma 4 12B (quantized).
-    Optimized for legal document reasoning and cross-referencing.
+    Local generation with a Gemma checkpoint through transformers.
+
+    The checkpoint must be in transformers format.  A GGUF file needs a
+    llama.cpp-style server instead, reached through OpenAIChatLLM.
     """
 
     def __init__(
         self,
-        model_name: str = "google/gemma-4-12b-it-qat-q4_0-gguf",
-        device: str = None,
+        model_name: Optional[str] = None,
+        device: Optional[str] = None,
         max_tokens: int = 2048,
         temperature: float = 0.7,
     ):
         """
-        Initialize the Gemma LLM.
-
         Args:
-            model_name: Model name or path (GGUF format)
-            device: Device to run on ('cpu', 'cuda', 'mps')
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-        """
-        import torch
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+            model_name: Hugging Face model ID or local path.  Falls back to
+                GEMMA_MODEL, then google/gemma-4-12B-it.
+            device: 'cuda', 'mps', or 'cpu'.  Detected when not given.
+            max_tokens: Maximum tokens to generate.
+            temperature: Sampling temperature.  0 means greedy decoding.
 
+        Raises:
+            ValueError: The model name is a GGUF checkpoint.
+            RuntimeError: transformers could not load the tokenizer or model.
+        """
+        model_name = model_name or os.getenv("GEMMA_MODEL") or DEFAULT_GEMMA_MODEL
+        if "gguf" in model_name.lower():
+            raise ValueError(
+                f"{model_name} is a GGUF checkpoint, which transformers cannot load "
+                "by name.  Serve it with llama.cpp or another OpenAI-compatible "
+                "server and set CHAT_BASE_URL, or set GEMMA_MODEL to a "
+                "transformers checkpoint."
+            )
+
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self.model_name = model_name
         self.device = device or self._get_device()
         self.max_tokens = max_tokens
         self.temperature = temperature
 
-        # Load model and tokenizer
-        logger.info(f"Loading {model_name} on {self.device}...")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name, trust_remote_code=True
-        )
-
-        # For GGUF models, we'd use llama.cpp or gguf library
-        # For now, using HuggingFace format
+        logger.info("Loading %s on %s", model_name, self.device)
         try:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 device_map=self.device,
-                trust_remote_code=True,
                 torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
             )
-        except Exception as e:
-            logger.warning(f"Failed to load {model_name}: {e}")
-            logger.info("Trying alternative model path...")
-            # Try local path or different format
-            self.model = None
-
-        logger.info(f"Initialized Gemma LLM on {self.device}")
+        except Exception as error:
+            raise RuntimeError(
+                f"Could not load {model_name} with transformers: {error}"
+            ) from error
 
     def _get_device(self) -> str:
-        """Get available device."""
         import torch
 
         if torch.cuda.is_available():
             return "cuda"
-        elif torch.backends.mps.is_available():
+        if torch.backends.mps.is_available():
             return "mps"
         return "cpu"
 
     def generate(
-        self, prompt: str, max_tokens: int = None, temperature: float = None
+        self,
+        prompt: str,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        history: Optional[Sequence[Dict[str, str]]] = None,
+        system: Optional[str] = None,
     ) -> str:
-        """
-        Generate text from prompt.
+        """Answer one prompt, after the system prompt and any earlier turns."""
+        return self.chat(
+            _messages(prompt, history, system),
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
 
-        Args:
-            prompt: Input prompt
-            max_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-
-        Returns:
-            Generated text
-        """
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+    ) -> str:
+        """Generate the next assistant turn for a list of messages."""
         import torch
 
-        if self.model is None:
-            return "Error: Model not loaded. Please check model path and try again."
+        max_tokens = self.max_tokens if max_tokens is None else max_tokens
+        temperature = self.temperature if temperature is None else temperature
 
-        max_tokens = max_tokens or self.max_tokens
-        temperature = temperature or self.temperature
+        # Some Gemma chat templates reject a system role, so the system
+        # prompt is folded into the first user turn.
+        turns = [dict(m) for m in messages if m["role"] != "system"]
+        system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+        if system and turns:
+            turns[0]["content"] = f"{system}\n\n{turns[0]['content']}"
 
-        # Format prompt
-        messages = [
-            {"role": "system", "content": self._get_system_prompt()},
-            {"role": "user", "content": prompt},
-        ]
-
-        # Tokenize
         input_ids = self.tokenizer.apply_chat_template(
-            messages, return_tensors="pt"
-        ).to(self.device)
-
-        # Generate
+            turns, add_generation_prompt=True, return_tensors="pt"
+        ).to(self.model.device)
+        options = {"max_new_tokens": max_tokens, "do_sample": temperature > 0}
+        if temperature > 0:
+            options["temperature"] = temperature
         with torch.no_grad():
             output = self.model.generate(
-                input_ids,
-                max_new_tokens=max_tokens,
-                temperature=temperature,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
+                input_ids, pad_token_id=self.tokenizer.eos_token_id, **options
             )
-
-        # Decode
-        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
-
-        # Extract assistant response
-        # Remove the input prompt from output
-        full_text = response
-        if "assistant" in full_text:
-            parts = full_text.split("assistant")
-            if len(parts) > 1:
-                response = parts[-1].strip()
-
-        return response
-
-    def chat(self, messages: List[Dict[str, str]], max_tokens: int = None) -> str:
-        """
-        Chat with the model.
-
-        Args:
-            messages: List of message dicts with 'role' and 'content'
-            max_tokens: Maximum tokens to generate
-
-        Returns:
-            Model response
-        """
-        import torch
-
-        if self.model is None:
-            return "Error: Model not loaded."
-
-        max_tokens = max_tokens or self.max_tokens
-
-        # Tokenize
-        input_ids = self.tokenizer.apply_chat_template(
-            messages, return_tensors="pt"
-        ).to(self.device)
-
-        # Generate
-        with torch.no_grad():
-            output = self.model.generate(
-                input_ids,
-                max_new_tokens=max_tokens,
-                temperature=self.temperature,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-
-        # Decode
-        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
-
-        return response
-
-    def _get_system_prompt(self) -> str:
-        """System prompt for legal document Q&A."""
-        return LEGAL_SYSTEM_PROMPT
+        new_tokens = output[0][input_ids.shape[-1] :]
+        return self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
 
 class OpenAIChatLLM:
     """
     Chat client for any OpenAI-compatible endpoint (for example a local
-    llama.cpp / Ollama / vLLM server exposing /v1/chat/completions).
-
-    This lets the generation side of the pipeline point at a local model
-    server the same way the embedding side already does, instead of requiring
-    the HuggingFace ``transformers`` install path used by GemmaLLM.
+    llama.cpp, Ollama, or vLLM server exposing /v1/chat/completions).
     """
 
     def __init__(
@@ -219,9 +184,9 @@ class OpenAIChatLLM:
     ):
         """
         Args:
-            base_url: OpenAI-compatible base URL. Falls back to the
-                CHAT_BASE_URL / OPENAI_CHAT_BASE_URL environment variables.
-            model: Model name to request. Falls back to CHAT_MODEL /
+            base_url: OpenAI-compatible base URL.  Falls back to the
+                CHAT_BASE_URL and OPENAI_CHAT_BASE_URL environment variables.
+            model: Model name to request.  Falls back to CHAT_MODEL and
                 OPENAI_CHAT_MODEL, then 'local'.
             max_tokens: Maximum tokens to generate.
             temperature: Sampling temperature.
@@ -243,7 +208,9 @@ class OpenAIChatLLM:
 
         self._client = OpenAI(base_url=self.base_url, api_key=api_key)
         logger.info(
-            f"Initialized OpenAI-compatible chat client -> {self.base_url} ({self.model})"
+            "Initialized OpenAI-compatible chat client -> %s (%s)",
+            self.base_url,
+            self.model,
         )
 
     def chat(
@@ -253,20 +220,20 @@ class OpenAIChatLLM:
         response = self._client.chat.completions.create(
             model=self.model,
             messages=messages,
-            max_tokens=max_tokens or self.max_tokens,
+            max_tokens=self.max_tokens if max_tokens is None else max_tokens,
             temperature=self.temperature,
         )
         return (response.choices[0].message.content or "").strip()
 
-    def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
-        """Generate a grounded answer for a single prompt."""
-        return self.chat(
-            [
-                {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=max_tokens,
-        )
+    def generate(
+        self,
+        prompt: str,
+        max_tokens: Optional[int] = None,
+        history: Optional[Sequence[Dict[str, str]]] = None,
+        system: Optional[str] = None,
+    ) -> str:
+        """Answer one prompt, after the system prompt and any earlier turns."""
+        return self.chat(_messages(prompt, history, system), max_tokens=max_tokens)
 
 
 def get_llm(**kwargs):
@@ -274,8 +241,8 @@ def get_llm(**kwargs):
     Build the chat client from the environment.
 
     If an OpenAI-compatible endpoint is configured (CHAT_BASE_URL or
-    OPENAI_CHAT_BASE_URL) return OpenAIChatLLM; otherwise fall back to the
-    local transformers-backed GemmaLLM, preserving the original default.
+    OPENAI_CHAT_BASE_URL), return OpenAIChatLLM.  Otherwise fall back to the
+    local transformers-backed GemmaLLM.
     """
     endpoint = os.getenv("CHAT_BASE_URL") or os.getenv("OPENAI_CHAT_BASE_URL")
     if endpoint:
@@ -285,51 +252,45 @@ def get_llm(**kwargs):
 
 class LegalChatBot:
     """
-    Chatbot for interacting with the RAG system.
-    Combines retrieval with LLM generation for legal Q&A.
+    Joins retrieval to an answer backend for questions about the indexed Acts.
+
+    Each answer is generated after the last few question and answer turns, so
+    a follow-up question can refer back.  Retrieval uses the current question
+    only.
     """
 
     def __init__(
         self,
         retriever,
-        llm: GemmaLLM,
+        llm,
         max_retrieved: int = 10,
-        max_context_tokens: int = 3000,
+        corpus_description: str = "the indexed documents",
+        history_turns: int = 3,
     ):
         """
-        Initialize the legal chatbot.
-
         Args:
-            retriever: HybridRetriever instance
-            llm: GemmaLLM instance
-            max_retrieved: Maximum chunks to retrieve
-            max_context_tokens: Maximum tokens for context
+            retriever: HybridRetriever instance.
+            llm: Any backend from get_llm().
+            max_retrieved: Chunks to retrieve before expansion.
+            corpus_description: Names the indexed documents in the system
+                prompt, for example "the Spam Act 2003".
+            history_turns: Earlier question and answer pairs sent with each
+                new question.
         """
         self.retriever = retriever
         self.llm = llm
         self.max_retrieved = max_retrieved
-        self.max_context_tokens = max_context_tokens
-
+        self.corpus_description = corpus_description
+        self.system_prompt = build_system_prompt(corpus_description)
+        self.history_turns = history_turns
         self.conversation_history: List[Dict[str, str]] = []
-        logger.info("Initialized LegalChatBot")
 
     def _build_context(self, query: str) -> Tuple[str, List[Dict]]:
-        """
-        Build context from retrieved documents.
-
-        Args:
-            query: User query
-
-        Returns:
-            Context string and list of source metadata
-        """
-        # Retrieve relevant chunks
+        """Retrieve for the query and format the chunks as numbered extracts."""
         results = self.retriever.retrieve(query, k=self.max_retrieved, expand=True)
 
-        # Build context
         context_parts = []
         sources = []
-
         for i, result in enumerate(results, 1):
             section_info = (
                 f"Section {result.section_number}"
@@ -338,10 +299,10 @@ class LegalChatBot:
             )
             if result.expansion:
                 section_info += f" (added because it {result.expansion_reason})"
-
-            chunk_text = f"[{i}] {result.document_name} - {section_info}\nType: {result.chunk_type}\nText: {result.text}"
-            context_parts.append(chunk_text)
-
+            context_parts.append(
+                f"[{i}] {result.document_name} - {section_info}\n"
+                f"Type: {result.chunk_type}\nText: {result.text}"
+            )
             sources.append(
                 {
                     "chunk_id": result.chunk_id,
@@ -351,62 +312,57 @@ class LegalChatBot:
                     "score": result.combined_score,
                 }
             )
+        return "\n\n".join(context_parts), sources
 
-        context = "\n\n".join(context_parts)
-        return context, sources
+    def recent_history(self) -> List[Dict[str, str]]:
+        """The last history_turns question and answer pairs."""
+        if self.history_turns <= 0:
+            return []
+        return self.conversation_history[-2 * self.history_turns :]
 
-    def answer(self, query: str, use_rag: bool = True) -> Dict[str, any]:
+    def answer(self, query: str, use_rag: bool = True) -> Dict:
         """
-        Answer a query using RAG or direct LLM.
+        Answer a question with retrieval, or directly when use_rag is False.
 
-        Args:
-            query: User query
-            use_rag: Whether to use retrieval-augmented generation
-
-        Returns:
-            Dict with 'response', 'sources', and 'metadata'
+        Returns a dict with 'response', 'sources', and 'metadata'.
         """
+        sources: List[Dict] = []
         if use_rag:
-            # Retrieve context
             context, sources = self._build_context(query)
-
-            # Build prompt
-            prompt = f"""Answer the following question using ONLY the provided legal documents.
+            prompt = f"""Answer the following question using only the extracts below.
 
 Question: {query}
 
-Legal Documents:
+Extracts:
 {context}
 
 Instructions:
-1. Answer based ONLY on the provided documents
-2. Cite specific section numbers
-3. If information is not available, state that clearly
-4. Be precise and accurate
+1. Answer only from the extracts.
+2. Cite specific section numbers.
+3. If the extracts do not contain the answer, say so.
+4. Be precise.
 
 Answer:"""
         else:
-            # Direct LLM (no RAG)
-            prompt = f"""Answer the following question about Australian workplace law:
+            prompt = f"""Answer the following question about Australian legislation:
 
 {query}
 
 Answer:"""
 
-        # Generate response
-        response = self.llm.generate(prompt)
+        response = self.llm.generate(
+            prompt, history=self.recent_history(), system=self.system_prompt
+        )
 
-        # Update conversation history
         self.conversation_history.extend(
             [
                 {"role": "user", "content": query},
                 {"role": "assistant", "content": response},
             ]
         )
-
         return {
             "response": response,
-            "sources": sources if use_rag else [],
+            "sources": sources,
             "metadata": {
                 "query": query,
                 "use_rag": use_rag,
@@ -415,21 +371,5 @@ Answer:"""
         }
 
     def clear_history(self):
-        """Clear conversation history."""
+        """Forget earlier turns."""
         self.conversation_history = []
-
-
-def main():
-    """Example usage."""
-    print("Gemma LLM Chatbot")
-    print("=" * 50)
-    print("Note: This requires the Gemma 4 12B model to be available")
-    print("Usage:")
-    print("  llm = GemmaLLM()")
-    print("  chatbot = LegalChatBot(retriever, llm)")
-    print("  result = chatbot.answer('What are ordinary hours?')")
-    print("  print(result['response'])")
-
-
-if __name__ == "__main__":
-    main()

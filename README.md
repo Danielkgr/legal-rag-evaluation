@@ -99,7 +99,7 @@ export CHAT_BASE_URL=http://localhost:10009/v1     # chat generation
 export CHAT_MODEL=<model-name-served-there>
 ```
 
-With `CHAT_BASE_URL` set, generation uses the OpenAI-compatible client.  Without it, generation falls back to the local Gemma 4 (12B) model.  Embeddings always come from `OPENAI_BASE_URL`, which defaults to OpenAI.
+With `CHAT_BASE_URL` set, generation uses the OpenAI-compatible client.  Without it, generation falls back to a local Gemma checkpoint loaded with `transformers`, `google/gemma-4-12B-it` unless `GEMMA_MODEL` names another.  A GGUF file cannot be loaded that way, so serve it with llama.cpp or a similar server and set `CHAT_BASE_URL` instead.  If the checkpoint fails to load, the chat stops with the error rather than answering.  Embeddings always come from `OPENAI_BASE_URL`, which defaults to OpenAI.
 
 ### 3. Run the tests
 
@@ -180,13 +180,15 @@ The runner generates three kinds of test query, with relevance labels derived au
 | `--mode` | `pipeline.py` | `process` | `process`, `query`, or `chat` |
 | `--query` | `pipeline.py` | None | Search query in query mode |
 | `--k` | `pipeline.py` | `10` | Number of results in query mode |
-| `--data-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data` | Base data directory |
-| `--output-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data/processed` | Directory for chunks and the index |
+| `--data-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data` | Accepted, but no command reads from it yet |
+| `--output-dir` | `pipeline.py`, `evaluate.py`, `chat.py` | `data/processed` | Directory for `chunks.json` and the index, which goes in its `embeddings/` folder |
 | `--load-index` | `pipeline.py`, `chat.py` | Off | Loads an existing index instead of building one |
 | `--index-name` | `pipeline.py`, `chat.py` | `fairwork_index` | Index name, saved as `<name>_index.json` |
 | `--num-queries` | `evaluate.py` | `100` | Number of test queries to generate |
 | `--eval-dir` | `evaluate.py` | `evaluation_set` | Directory for the generated test set and report |
 | `--no-print` | `evaluate.py` | Off | Skips printing the report |
+| `--embedding-model` | `pipeline.py`, `evaluate.py` | `text-embedding-3-large` | Embedding model to request from the OpenAI-compatible server |
+| `--no-rag` | `chat.py` | Off | Starts the chat with retrieval off.  `/rag on` and `/rag off` switch it during the chat. |
 
 ### In code
 
@@ -199,7 +201,7 @@ The runner generates three kinds of test query, with relevance labels derived au
 | **PDF parsing** | `pdfplumber` |
 | **Keyword search** | `rank-bm25` |
 | **Embeddings and hosted chat** | `openai` |
-| **Local chat** | `transformers` running Gemma 4 (12B) |
+| **Local chat** | `transformers` running a Gemma checkpoint, `google/gemma-4-12B-it` by default |
 
 <br>
 

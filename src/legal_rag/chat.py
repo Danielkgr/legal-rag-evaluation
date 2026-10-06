@@ -1,191 +1,149 @@
 """
-Interactive chat interface for the Fair Work RAG system.
+Interactive chat over the indexed legislation.
 """
 
-import sys
-import os
-import json
-from pathlib import Path
-from typing import List, Dict
+import argparse
 import logging
+import os
+import sys
 
+from legal_rag.llm import get_llm
 from legal_rag.pipeline import FairWorkRAGPipeline
-from legal_rag.llm import GemmaLLM
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
+
+COMMANDS = """Commands:
+  /help          Show this help
+  /clear         Forget earlier turns
+  /history       Show the last turns
+  /rag on|off    Answer with or without retrieval
+  /quit          Leave the chat"""
 
 
 class ChatInterface:
-    """Interactive command-line chat interface."""
+    """Interactive command-line chat that keeps one conversation."""
 
-    def __init__(self, pipeline: FairWorkRAGPipeline, llm: GemmaLLM = None):
-        """
-        Initialize the chat interface.
-
-        Args:
-            pipeline: FairWorkRAGPipeline instance
-            llm: LLM instance (optional)
-        """
+    def __init__(self, pipeline: FairWorkRAGPipeline, llm=None, rag_enabled=True):
         self.pipeline = pipeline
-        self.llm = llm or GemmaLLM()
-        self.conversation_history: List[Dict] = []
-
-        logger.info("Initialized ChatInterface")
+        self.chatbot = pipeline.chatbot(llm if llm is not None else get_llm())
+        self.rag_enabled = rag_enabled
 
     def start(self):
-        """Start the interactive chat loop."""
+        """Run the chat loop until /quit, Ctrl-C, or end of input."""
         print("\n" + "=" * 60)
-        print("FAIR WORK ACT & AWARDS RAG CHAT")
+        print("LEGISLATION CHAT")
         print("=" * 60)
-        print("Ask questions about Australian workplace law.")
+        print(f"Ask questions about {self.chatbot.corpus_description}.")
         print("Commands: /help, /clear, /history, /rag <on|off>, /quit\n")
-
-        rag_enabled = True
 
         while True:
             try:
                 user_input = input("\nYou: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\n\nGoodbye.")
+                return
+            if not user_input:
+                continue
+            if user_input.startswith("/"):
+                if self.handle_command(user_input) == "quit":
+                    return
+                continue
+            try:
+                result = self.chatbot.answer(user_input, use_rag=self.rag_enabled)
+            except Exception as error:  # keep the session alive on one bad turn
+                logger.error("Error: %s", error)
+                print(f"Error: {error}")
+                continue
+            self.show(result)
 
-                if not user_input:
-                    continue
-
-                # Handle commands
-                if user_input.startswith("/"):
-                    self._handle_command(user_input, rag_enabled)
-                    continue
-
-                # Chat with RAG
-                result = self.pipeline.chat(
-                    user_input, llm=self.llm, use_rag=rag_enabled
+    def show(self, result):
+        """Print an answer and the sources it was given."""
+        print(f"\nAssistant: {result['response']}")
+        if result["sources"]:
+            print("\nSources:")
+            for i, source in enumerate(result["sources"][:5], 1):
+                added = (
+                    f" (added: {source['expansion']})"
+                    if source.get("expansion")
+                    else ""
                 )
+                section = f", section {source['section']}" if source["section"] else ""
+                print(f"  [{i}] {source['document']}{section}{added}")
 
-                # Display response
-                print(f"\nAssistant: {result['response']}")
-
-                # Display sources if available
-                if result["sources"]:
-                    print("\nSources:")
-                    for i, source in enumerate(result["sources"][:5], 1):
-                        print(f"  [{i}] {source['document']}")
-                        if source["section"]:
-                            print(f"      Section: {source['section']}")
-                        print(f"      Score: {source['score']:.3f}")
-
-                # Update history
-                self.conversation_history.extend(
-                    [
-                        {"role": "user", "content": user_input},
-                        {"role": "assistant", "content": result["response"]},
-                    ]
-                )
-
-            except KeyboardInterrupt:
-                print("\n\nGoodbye!")
-                break
-            except EOFError:
-                print("\n\nGoodbye!")
-                break
-            except Exception as e:
-                logger.error(f"Error: {e}")
-                print(f"Error: {e}")
-
-    def _handle_command(self, command: str, rag_enabled: bool):
-        """Handle special commands."""
-        cmd_parts = command.split()
-        cmd = cmd_parts[0].lower()
-
-        if cmd == "/help":
-            print("\nCommands:")
-            print("  /help    - Show this help message")
-            print("  /clear   - Clear conversation history")
-            print("  /history - Show conversation history")
-            print("  /rag <on|off> - Toggle RAG mode")
-            print("  /quit    - Exit the chat")
-
-        elif cmd == "/clear":
-            self.conversation_history = []
+    def handle_command(self, command: str):
+        """Act on a slash command.  Returns "quit" when the chat should end."""
+        parts = command.split()
+        name = parts[0].lower()
+        if name == "/help":
+            print(COMMANDS)
+        elif name == "/clear":
+            self.chatbot.clear_history()
             print("Conversation history cleared.")
-
-        elif cmd == "/history":
-            if not self.conversation_history:
+        elif name == "/history":
+            history = self.chatbot.conversation_history[-10:]
+            if not history:
                 print("No conversation history.")
-            else:
-                print("\nConversation History:")
-                for msg in self.conversation_history[-10:]:
-                    role = msg["role"].capitalize()
-                    content = (
-                        msg["content"][:100] + "..."
-                        if len(msg["content"]) > 100
-                        else msg["content"]
-                    )
-                    print(f"  {role}: {content}")
-
-        elif cmd == "/rag":
-            if len(cmd_parts) < 2:
-                print(f"RAG mode: {'enabled' if rag_enabled else 'disabled'}")
-            elif cmd_parts[1].lower() == "on":
-                rag_enabled = True
-                print("RAG mode enabled.")
-            elif cmd_parts[1].lower() == "off":
-                rag_enabled = False
-                print("RAG mode disabled.")
+            for message in history:
+                content = message["content"]
+                if len(content) > 100:
+                    content = content[:100] + "..."
+                print(f"  {message['role'].capitalize()}: {content}")
+        elif name == "/rag":
+            if len(parts) < 2:
+                print(f"RAG mode: {'on' if self.rag_enabled else 'off'}")
+            elif parts[1].lower() in ("on", "off"):
+                self.rag_enabled = parts[1].lower() == "on"
+                print(f"RAG mode {'on' if self.rag_enabled else 'off'}.")
             else:
                 print("Usage: /rag <on|off>")
-
-        elif cmd == "/quit":
-            print("Goodbye!")
-            sys.exit(0)
-
+        elif name == "/quit":
+            print("Goodbye.")
+            return "quit"
         else:
-            print(f"Unknown command: {cmd}")
-            print("Type /help for available commands.")
+            print(f"Unknown command: {name}.  Type /help for the commands.")
+        return None
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    """The command-line options, shared with the menu's tests."""
+    parser = argparse.ArgumentParser(description="Chat over the indexed legislation")
+    parser.add_argument("--data-dir", default="data", help="Data directory")
+    parser.add_argument(
+        "--output-dir", default="data/processed", help="Directory holding the index"
+    )
+    parser.add_argument("--index-name", default="fairwork_index", help="Index name")
+    parser.add_argument(
+        "--load-index",
+        action="store_true",
+        help="Load the saved index (the chat always does; kept for compatibility)",
+    )
+    parser.add_argument(
+        "--no-rag", action="store_true", help="Start with retrieval switched off"
+    )
+    return parser
 
 
 def main():
-    """Main entry point."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Fair Work RAG Chat Interface")
-    parser.add_argument("--data-dir", default="data", help="Data directory")
-    parser.add_argument(
-        "--output-dir", default="data/processed", help="Output directory"
+    """Entry point for python -m legal_rag.chat."""
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
-    parser.add_argument("--index-name", default="fairwork_index", help="Index name")
-    parser.add_argument("--load-index", action="store_true", help="Load existing index")
+    args = build_arg_parser().parse_args()
 
-    args = parser.parse_args()
-
-    # Check for API key
     if not os.getenv("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable not set")
-        print("Please set your OpenAI API key:")
-        print("  export OPENAI_API_KEY='your-api-key'")
-        return
+        print("Error: OPENAI_API_KEY is not set.  Questions are embedded through")
+        print("the OpenAI client, so set it, or set any placeholder value when")
+        print("OPENAI_BASE_URL points at a local embedding server.")
+        sys.exit(1)
 
-    # Initialize pipeline
     pipeline = FairWorkRAGPipeline(data_dir=args.data_dir, output_dir=args.output_dir)
+    pipeline.load_index(args.index_name)
+    if not pipeline.embedding_manager.embeddings:
+        print(f"No index named {args.index_name} in {args.output_dir}/embeddings.")
+        print("Build one first with: python -m legal_rag.pipeline --mode process")
+        sys.exit(1)
 
-    if args.load_index:
-        pipeline.load_index(args.index_name)
-    else:
-        # Try to load existing index
-        try:
-            pipeline.load_index(args.index_name)
-            print("Loaded existing index.")
-        except Exception as e:
-            print(f"Index not found or error loading: {e}")
-            print("Please run with --mode process first to build the index.")
-            return
-
-    # Initialize LLM
-    llm = GemmaLLM()
-
-    # Start chat interface
-    chat = ChatInterface(pipeline, llm)
-    chat.start()
+    ChatInterface(pipeline, get_llm(), rag_enabled=not args.no_rag).start()
 
 
 if __name__ == "__main__":

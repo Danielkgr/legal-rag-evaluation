@@ -9,8 +9,14 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# The first page of an Act, regulation, or award names it on a line of its
+# own, for example "Spam Act 2003" or "Fair Work Regulations 2009".
+TITLE_LINE = re.compile(
+    r"^\s*(?P<title>[A-Z][A-Za-z ,'()-]{1,120}? (?P<kind>Act|Regulations|Rules|Award)"
+    r" \d{4})\s*$"
+)
 
 
 @dataclass
@@ -117,35 +123,18 @@ class PDFParser:
             )
 
     def _extract_metadata(self, pdf, full_text: List[str]) -> Dict:
-        """Extract document metadata from the PDF."""
+        """Read the document's title and type from its first page."""
         metadata = {}
-
-        # Try to get title from PDF metadata
         if pdf.metadata:
             metadata.update(pdf.metadata)
 
-        # Extract document type from text
-        full_text_str = "\n".join(full_text[:5000])  # Check first 5000 chars
-
-        if re.search(r"Fair\s+Work\s+Act", full_text_str, re.IGNORECASE):
-            metadata["document_type"] = "Act"
-            metadata["title"] = "Fair Work Act 2009"
-        elif re.search(r"Modern\s+Award", full_text_str, re.IGNORECASE):
-            metadata["document_type"] = "Award"
-            # Try to extract award name
-            award_match = re.search(
-                r"Modern\s+Award\s*[:–-]?\s*(.+?)(?:\n|$)", full_text_str, re.IGNORECASE
-            )
-            if award_match:
-                metadata["award_name"] = award_match.group(1).strip()
-        elif re.search(r"Regulation", full_text_str, re.IGNORECASE):
-            metadata["document_type"] = "Regulation"
-
-        # Extract effective date
-        date_match = re.search(r"([1-9]?\d{1,3}[/-]\d{1,2}[/-]\d{2,4})", full_text_str)
-        if date_match:
-            metadata["effective_date"] = date_match.group(1)
-
+        first_page = full_text[0] if full_text else ""
+        for line in first_page.splitlines()[:15]:
+            match = TITLE_LINE.match(line)
+            if match:
+                metadata["title"] = match.group("title")
+                metadata["document_type"] = match.group("kind").rstrip("s")
+                break
         return metadata
 
     def parse_multiple_pdfs(self, pdf_paths: List[str]) -> List[LegalDocument]:
