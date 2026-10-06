@@ -1,0 +1,668 @@
+{
+  "name": "Fair Work Act 2009 (Cth), section-level retrieval questions",
+  "status": "provisional",
+  "review_note": "Drafted for the section-level harness and not yet reviewed by the owner.  Each question is a plain-English paraphrase, not a quotation of the Act, and its gold sections are the provisions that answer it most directly.  Review the questions and labels before treating any score on this set as a result.",
+  "act": "fair_work_act_2009",
+  "verified_on": "2026-10-06",
+  "verification": "Every gold section number was checked with a web search against the AustLII page for that section of the consolidated Fair Work Act 2009.  The page title gives the section number and heading, both recorded with the URL in each question's sources.",
+  "not_run": "No retrieval has been run on this set.  The Act's PDF and an embedding model could not be reached from the environment where the set was drafted.",
+  "questions": [
+    {
+      "id": "fwa-01",
+      "question": "How many hours a week can an employer require a full-time employee to work, and can the employee refuse extra hours?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "62"
+        }
+      ],
+      "sources": [
+        {
+          "section": "62",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s62.html",
+          "heading": "Maximum weekly hours"
+        }
+      ]
+    },
+    {
+      "id": "fwa-02",
+      "question": "Who can ask their employer for flexible working arrangements, such as different hours or working from home?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "65"
+        }
+      ],
+      "sources": [
+        {
+          "section": "65",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s65.html",
+          "heading": "Requests for flexible working arrangements"
+        }
+      ]
+    },
+    {
+      "id": "fwa-03",
+      "question": "How much unpaid parental leave is an employee entitled to after the birth of a child?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "70"
+        }
+      ],
+      "sources": [
+        {
+          "section": "70",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s70.html",
+          "heading": "Entitlement to unpaid parental leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-04",
+      "question": "How many weeks of paid annual leave does a full-time employee get each year?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "87"
+        }
+      ],
+      "sources": [
+        {
+          "section": "87",
+          "url": "https://www.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s87.html",
+          "heading": "Entitlement to annual leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-05",
+      "question": "How many days of paid personal and carer's leave does an employee accrue each year?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "96"
+        }
+      ],
+      "sources": [
+        {
+          "section": "96",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s96.html",
+          "heading": "Entitlement to paid personal/carer's leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-06",
+      "question": "Can an employee take leave to care for a family member who suddenly falls ill, if they have no paid leave left?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "102"
+        }
+      ],
+      "sources": [
+        {
+          "section": "102",
+          "url": "https://www6.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s102.html",
+          "heading": "Entitlement to unpaid carer's leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-07",
+      "question": "How much compassionate leave can an employee take when a member of their immediate family dies?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "104"
+        }
+      ],
+      "sources": [
+        {
+          "section": "104",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s104.html",
+          "heading": "Entitlement to compassionate leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-08",
+      "question": "Are employees entitled to paid leave to deal with family and domestic violence?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "106A"
+        }
+      ],
+      "sources": [
+        {
+          "section": "106A",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s106a.html",
+          "heading": "Entitlement to paid family and domestic violence leave"
+        }
+      ]
+    },
+    {
+      "id": "fwa-09",
+      "question": "Can an employer require an employee to work on a public holiday?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "114"
+        }
+      ],
+      "sources": [
+        {
+          "section": "114",
+          "url": "http://www6.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s114.html",
+          "heading": "Entitlement to be absent from employment on public holiday"
+        }
+      ]
+    },
+    {
+      "id": "fwa-10",
+      "question": "How much notice must an employer give before terminating an employee's employment?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "117"
+        }
+      ],
+      "sources": [
+        {
+          "section": "117",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s117.html",
+          "heading": "Requirement for notice of termination or payment in lieu"
+        }
+      ]
+    },
+    {
+      "id": "fwa-11",
+      "question": "When is an employee entitled to redundancy pay?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "119"
+        }
+      ],
+      "sources": [
+        {
+          "section": "119",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s119.html",
+          "heading": "Redundancy pay"
+        }
+      ]
+    },
+    {
+      "id": "fwa-12",
+      "question": "Does a business with ten employees have to pay redundancy pay?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "121"
+        },
+        {
+          "act": "fair_work_act_2009",
+          "section": "23"
+        }
+      ],
+      "sources": [
+        {
+          "section": "121",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s121.html",
+          "heading": "Exclusions from obligation to pay redundancy pay"
+        },
+        {
+          "section": "23",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s23.html",
+          "heading": "Meaning of small business employer"
+        }
+      ]
+    },
+    {
+      "id": "fwa-13",
+      "question": "Must an employer give a new employee the Fair Work Information Statement?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "125"
+        }
+      ],
+      "sources": [
+        {
+          "section": "125",
+          "url": "https://www5.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s125.html",
+          "heading": "Giving new employees the Fair Work Information Statement"
+        }
+      ]
+    },
+    {
+      "id": "fwa-14",
+      "question": "What must the Fair Work Commission take into account when it sets the terms of modern awards?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "134"
+        }
+      ],
+      "sources": [
+        {
+          "section": "134",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s134.html",
+          "heading": "The modern awards objective"
+        }
+      ]
+    },
+    {
+      "id": "fwa-15",
+      "question": "What test must an enterprise agreement pass when it is compared with the relevant modern award?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "193"
+        }
+      ],
+      "sources": [
+        {
+          "section": "193",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s193.html",
+          "heading": "Passing the better off overall test"
+        }
+      ]
+    },
+    {
+      "id": "fwa-16",
+      "question": "How often must an employer pay an employee's wages, and by what methods?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "323"
+        }
+      ],
+      "sources": [
+        {
+          "section": "323",
+          "url": "https://www6.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s323.html",
+          "heading": "Method and frequency of payment"
+        }
+      ]
+    },
+    {
+      "id": "fwa-17",
+      "question": "When can an employer deduct money from an employee's pay?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "324"
+        }
+      ],
+      "sources": [
+        {
+          "section": "324",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s324.html",
+          "heading": "Permitted deductions"
+        }
+      ]
+    },
+    {
+      "id": "fwa-18",
+      "question": "Can an employer take action against an employee because the employee complained about their pay?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "340"
+        },
+        {
+          "act": "fair_work_act_2009",
+          "section": "341"
+        }
+      ],
+      "sources": [
+        {
+          "section": "340",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s340.html",
+          "heading": "Protection"
+        },
+        {
+          "section": "341",
+          "url": "http://www6.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s341.html",
+          "heading": "Meaning of workplace right"
+        }
+      ]
+    },
+    {
+      "id": "fwa-19",
+      "question": "What counts as adverse action by an employer against an employee?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "342"
+        }
+      ],
+      "sources": [
+        {
+          "section": "342",
+          "url": "https://www8.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s342.html",
+          "heading": "Meaning of adverse action"
+        }
+      ]
+    },
+    {
+      "id": "fwa-20",
+      "question": "Can an employer treat an employee badly because of their age, pregnancy, or religion?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "351"
+        }
+      ],
+      "sources": [
+        {
+          "section": "351",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s351.html",
+          "heading": "Discrimination"
+        }
+      ]
+    },
+    {
+      "id": "fwa-21",
+      "question": "Can an employee be dismissed for being temporarily absent from work because of illness or injury?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "352"
+        }
+      ],
+      "sources": [
+        {
+          "section": "352",
+          "url": "https://www.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s352.html",
+          "heading": "Temporary absence--illness or injury"
+        }
+      ]
+    },
+    {
+      "id": "fwa-22",
+      "question": "Is it unlawful for a business to tell a worker they are an independent contractor when they are really an employee?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "357"
+        }
+      ],
+      "sources": [
+        {
+          "section": "357",
+          "url": "http://www.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s357.html",
+          "heading": "Misrepresenting employment as independent contracting arrangement"
+        }
+      ]
+    },
+    {
+      "id": "fwa-23",
+      "question": "In a general protections case, who has to prove the reason the employer acted?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "361"
+        }
+      ],
+      "sources": [
+        {
+          "section": "361",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s361.html",
+          "heading": "Reason for action to be presumed unless proved otherwise"
+        }
+      ]
+    },
+    {
+      "id": "fwa-24",
+      "question": "How long does a dismissed employee have to make a general protections application?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "366"
+        }
+      ],
+      "sources": [
+        {
+          "section": "366",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s366.html",
+          "heading": "Time for application"
+        }
+      ]
+    },
+    {
+      "id": "fwa-25",
+      "question": "Who is protected from unfair dismissal?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "382"
+        }
+      ],
+      "sources": [
+        {
+          "section": "382",
+          "url": "https://www7.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s382.html",
+          "heading": "When a person is protected from unfair dismissal"
+        }
+      ]
+    },
+    {
+      "id": "fwa-26",
+      "question": "How long must an employee have worked for a small business before they can claim unfair dismissal?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "383"
+        },
+        {
+          "act": "fair_work_act_2009",
+          "section": "23"
+        }
+      ],
+      "sources": [
+        {
+          "section": "383",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s383.html",
+          "heading": "Meaning of minimum employment period"
+        },
+        {
+          "section": "23",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s23.html",
+          "heading": "Meaning of small business employer"
+        }
+      ]
+    },
+    {
+      "id": "fwa-27",
+      "question": "What makes a dismissal unfair?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "385"
+        }
+      ],
+      "sources": [
+        {
+          "section": "385",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s385.html",
+          "heading": "What is an unfair dismissal"
+        }
+      ]
+    },
+    {
+      "id": "fwa-28",
+      "question": "What does the Fair Work Commission consider when deciding whether a dismissal was harsh, unjust or unreasonable?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "387"
+        }
+      ],
+      "sources": [
+        {
+          "section": "387",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s387.html",
+          "heading": "Criteria for considering harshness etc."
+        }
+      ]
+    },
+    {
+      "id": "fwa-29",
+      "question": "When does following the Small Business Fair Dismissal Code protect an employer from an unfair dismissal claim?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "388"
+        }
+      ],
+      "sources": [
+        {
+          "section": "388",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s388.html",
+          "heading": "The Small Business Fair Dismissal Code"
+        }
+      ]
+    },
+    {
+      "id": "fwa-30",
+      "question": "When is a dismissal a case of genuine redundancy?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "389"
+        }
+      ],
+      "sources": [
+        {
+          "section": "389",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s389.html",
+          "heading": "Meaning of genuine redundancy"
+        }
+      ]
+    },
+    {
+      "id": "fwa-31",
+      "question": "How long does an employee have to lodge an unfair dismissal application?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "394"
+        }
+      ],
+      "sources": [
+        {
+          "section": "394",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s394.html",
+          "heading": "Application for unfair dismissal remedy"
+        }
+      ]
+    },
+    {
+      "id": "fwa-32",
+      "question": "Can a worker ask the Fair Work Commission for an order to stop bullying, and what counts as being bullied at work?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "789FC"
+        },
+        {
+          "act": "fair_work_act_2009",
+          "section": "789FD"
+        }
+      ],
+      "sources": [
+        {
+          "section": "789FC",
+          "url": "https://www5.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s789fc.html",
+          "heading": "Application for an FWC order to stop bullying"
+        },
+        {
+          "section": "789FD",
+          "url": "http://www9.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s789fd.html",
+          "heading": "When is a worker bullied at work or sexually harassed at work?"
+        }
+      ]
+    },
+    {
+      "id": "fwa-33",
+      "question": "What employee records must an employer keep, and must it give employees pay slips?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "535"
+        },
+        {
+          "act": "fair_work_act_2009",
+          "section": "536"
+        }
+      ],
+      "sources": [
+        {
+          "section": "535",
+          "url": "https://www6.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s535.html",
+          "heading": "Employer obligations in relation to employee records"
+        },
+        {
+          "section": "536",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s536.html",
+          "heading": "Employer obligations in relation to pay slips"
+        }
+      ]
+    },
+    {
+      "id": "fwa-34",
+      "question": "What happens in a wage claim if the employer did not keep the records the Act requires?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "557C"
+        }
+      ],
+      "sources": [
+        {
+          "section": "557C",
+          "url": "https://www.austlii.edu.au/cgi-bin/viewdoc/au/legis/cth/consol_act/fwa2009114/s557c.html",
+          "heading": "Presumption where records not provided"
+        }
+      ]
+    },
+    {
+      "id": "fwa-35",
+      "question": "Can a manager or adviser be personally liable for helping an employer underpay its workers?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "550"
+        }
+      ],
+      "sources": [
+        {
+          "section": "550",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s550.html",
+          "heading": "Involvement in contravention treated in same way as actual contravention"
+        }
+      ]
+    },
+    {
+      "id": "fwa-36",
+      "question": "Who is a national system employee covered by the Act?",
+      "gold": [
+        {
+          "act": "fair_work_act_2009",
+          "section": "13"
+        }
+      ],
+      "sources": [
+        {
+          "section": "13",
+          "url": "https://classic.austlii.edu.au/au/legis/cth/consol_act/fwa2009114/s13.html",
+          "heading": "Meaning of national system employee"
+        }
+      ]
+    }
+  ]
+}

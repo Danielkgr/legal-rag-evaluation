@@ -1,16 +1,17 @@
 """Metric semantics, including the convention that makes auto-annotation misleading.
 
-The bundled evaluation generator marks a chunk relevant to a query using only
-shallow lexical overlap, so in practice it labels *every* chunk relevant to
-*every* query. Under this implementation that inflates recall and mean average
-precision to 1.0 for any query with no judged-relevant chunk, which is why the
-auto-generated run cannot be read as a retrieval score. These tests pin down
+The bundled generator marks every chunk of a templated query's source document
+relevant, and most of its queries are Fair Work Act questions written into the
+code, which have no relevant chunk when no Fair Work Act is indexed (see
+tests/test_eval_generator.py).  The metric code scores a query with no
+relevant chunk as recall 1.0 and mean average precision 1.0, which is why the
+auto-generated run cannot be read as a retrieval score.  These tests pin down
 both the intended behaviour on a small hand-built judgment set and that
 no-relevant-chunks convention, so the behaviour is documented rather than
 surprising.
 """
 
-from evaluation.eval_metrics import EvaluationMetrics
+from legal_rag.evaluation.eval_metrics import EvaluationMetrics
 
 
 def _ann(query_id, chunk_id, score):
