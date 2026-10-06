@@ -2,12 +2,13 @@
 PDF parsing module for Fair Work Act and modern awards documents.
 """
 
-import pdfplumber
-import re
-from pathlib import Path
-from typing import List, Dict, Optional
-from dataclasses import dataclass
 import logging
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import pdfplumber
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class LegalDocument:
     title: str
     document_type: str  # 'Act', 'Award', 'Regulation', etc.
     pages: List[DocumentPage]
-    metadata: Dict = None
+    metadata: Optional[Dict] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -48,26 +49,6 @@ class PDFParser:
     Parser for Fair Work Act and modern awards PDFs.
     Extracts text while preserving document structure.
     """
-
-    def __init__(self):
-        self._init_patterns()
-
-    def _init_patterns(self):
-        """Initialize regex patterns for legal document structure."""
-        self.patterns = {
-            "section": re.compile(
-                r"(?:Section|Sec|s)\s*([\d]+(?:\.\d+)*)", re.IGNORECASE
-            ),
-            "schedule": re.compile(r"Schedule\s+[\dA-Z]", re.IGNORECASE),
-            "part": re.compile(r"Part\s+[\dA-Z]", re.IGNORECASE),
-            "definition": re.compile(
-                r'defined\s+(?:in|as)\s+(?:the\s+)?["\']?([\w\s]+?)["\']?(?:s)?'
-            ),
-            "cross_ref": re.compile(
-                r"(?:see|see also|refer to|pursuant to)\s+(?:section|s)\.?[\s]*([\d\w\.\s,]+)",
-                re.IGNORECASE,
-            ),
-        }
 
     def parse_pdf(
         self, pdf_path: str, pages: Optional[List[int]] = None
@@ -136,31 +117,3 @@ class PDFParser:
                 metadata["document_type"] = match.group("kind").rstrip("s")
                 break
         return metadata
-
-    def parse_multiple_pdfs(self, pdf_paths: List[str]) -> List[LegalDocument]:
-        """Parse multiple PDF documents."""
-        return [self.parse_pdf(path) for path in pdf_paths]
-
-
-def main():
-    """Example usage."""
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python pdf_parser.py <pdf_path> [page1 page2 ...]")
-        sys.exit(1)
-
-    pdf_path = sys.argv[1]
-    pages = [int(p) for p in sys.argv[2:]] if len(sys.argv) > 2 else None
-
-    parser = PDFParser()
-    doc = parser.parse_pdf(pdf_path, pages)
-
-    print(f"Document: {doc.title}")
-    print(f"Type: {doc.document_type}")
-    print(f"Pages: {len(doc.pages)}")
-    print(f"\nFirst 500 chars of first page:\n{doc.pages[0].text[:500]}...")
-
-
-if __name__ == "__main__":
-    main()

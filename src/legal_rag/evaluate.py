@@ -3,19 +3,16 @@ Main evaluation runner for the Fair Work RAG system.
 Processes documents, builds index, generates evaluation set, and computes metrics.
 """
 
-import sys
-import os
-import json
 import argparse
-from pathlib import Path
-from typing import List, Dict
+import json
 import logging
+import os
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from legal_rag.pipeline import FairWorkRAGPipeline
-from legal_rag.embedding import EmbeddingModel, EmbeddingManager
-from legal_rag.retrieval import HybridRetriever
 from legal_rag.evaluation.eval_generator import EvaluationSetGenerator
 from legal_rag.evaluation.eval_metrics import EvaluationMetrics
+from legal_rag.pipeline import FairWorkRAGPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +53,10 @@ class EvaluationRunner:
         logger.info("Initialized EvaluationRunner")
 
     def run_evaluation(
-        self, pdf_paths: List[str], num_queries: int = 100, k_values: List[int] = None
+        self,
+        pdf_paths: List[str],
+        num_queries: int = 100,
+        k_values: Optional[List[int]] = None,
     ) -> Dict:
         """
         Run the complete evaluation pipeline.
@@ -96,9 +96,6 @@ class EvaluationRunner:
         self.generator.generate_queries(chunks, num_queries=num_queries)
         self.generator.generate_annotations(chunks, auto_annotate=True)
         self.generator.save_evaluation_set()
-
-        queries_file = self.eval_dir / "queries.json"
-        annotations_file = self.eval_dir / "annotations.json"
 
         queries, annotations = self.generator.queries, self.generator.annotations
         logger.info(

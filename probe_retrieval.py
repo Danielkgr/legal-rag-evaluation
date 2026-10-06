@@ -10,7 +10,9 @@ the top k?  Queries and their expected Act were fixed in advance, and the
 accuracy is whatever the run produces.
 """
 
-import os, sys, json
+import json
+import os
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))

@@ -10,14 +10,13 @@ produce describe this generator more than retrieval quality; see the README.
 """
 
 import json
-import random
-from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass, asdict
-from collections import defaultdict
 import logging
+import random
+from collections import defaultdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Dict, List, Optional
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,7 @@ class Query:
     difficulty: str  # 'easy', 'medium', 'hard'
     expected_sections: List[str]
     expected_documents: List[str]
-    metadata: Dict = None
+    metadata: Optional[Dict] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -73,7 +72,7 @@ class EvaluationSetGenerator:
         self,
         chunks: List[Dict],
         num_queries: int = 100,
-        query_type_distribution: Dict[str, float] = None,
+        query_type_distribution: Optional[Dict[str, float]] = None,
     ) -> List[Query]:
         """
         Generate test queries from available chunks.
@@ -146,7 +145,7 @@ class EvaluationSetGenerator:
                 lambda t, s: f"What does Section {s} say about",
                 lambda t, s: f"Find the definition in Section {s}",
                 lambda t, s: f"What is the text of Section {s}?",
-                lambda t, s: f"Explain Section {s} of the {doc}",
+                lambda t, s, doc=doc: f"Explain Section {s} of the {doc}",
             ]
 
             # Extract key terms from text for more specific queries
@@ -492,31 +491,3 @@ class EvaluationSetGenerator:
             f"Loaded evaluation set: {len(self.queries)} queries, {len(self.annotations)} annotations"
         )
         return True
-
-
-def main():
-    """Example usage."""
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python eval_generator.py <chunks_json> [num_queries]")
-        sys.exit(1)
-
-    chunks_file = sys.argv[1]
-    num_queries = int(sys.argv[2]) if len(sys.argv) > 2 else 100
-
-    # Load chunks
-    with open(chunks_file, "r") as f:
-        chunks = json.load(f)
-
-    # Generate evaluation set
-    generator = EvaluationSetGenerator()
-    queries = generator.generate_queries(chunks, num_queries)
-    annotations = generator.generate_annotations(chunks)
-    generator.save_evaluation_set()
-
-    print(f"Generated evaluation set with {len(queries)} queries")
-
-
-if __name__ == "__main__":
-    main()

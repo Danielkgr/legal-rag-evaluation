@@ -3,14 +3,11 @@ Evaluation metrics module for RAG systems.
 Computes precision, recall, and other standard metrics.
 """
 
-import json
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
-from collections import defaultdict
 import logging
-from pathlib import Path
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -224,7 +221,10 @@ class EvaluationMetrics:
         return ap_sum / total_relevant
 
     def compute_metrics_for_query(
-        self, query_id: str, retrieved_chunks: List[str], k_values: List[int] = None
+        self,
+        query_id: str,
+        retrieved_chunks: List[str],
+        k_values: Optional[List[int]] = None,
     ) -> RetrievalMetrics:
         """
         Compute all metrics for a single query.
@@ -278,7 +278,7 @@ class EvaluationMetrics:
     def compute_overall_metrics(
         self,
         query_results: Dict[str, List[str]],
-        k_values: List[int] = None,
+        k_values: Optional[List[int]] = None,
         aggregate: str = "mean",
     ) -> Dict[str, float]:
         """
@@ -346,78 +346,3 @@ class EvaluationMetrics:
         ) / len(all_metrics)
 
         return overall
-
-
-def load_evaluation_set(
-    queries_file: str, annotations_file: str
-) -> Tuple[List[Dict], List[Dict]]:
-    """Load evaluation set from JSON files."""
-    with open(queries_file, "r") as f:
-        queries = json.load(f)
-    with open(annotations_file, "r") as f:
-        annotations = json.load(f)
-    return queries, annotations
-
-
-def main():
-    """Example usage."""
-    import sys
-
-    if len(sys.argv) < 3:
-        print(
-            "Usage: python eval_metrics.py <queries.json> <annotations.json> [results.json]"
-        )
-        sys.exit(1)
-
-    queries_file = sys.argv[1]
-    annotations_file = sys.argv[2]
-    results_file = sys.argv[3] if len(sys.argv) > 3 else None
-
-    # Load evaluation set
-    queries, annotations = load_evaluation_set(queries_file, annotations_file)
-
-    # Initialize metrics calculator
-    metrics_calc = EvaluationMetrics(annotations)
-
-    # Load or generate results
-    if results_file and Path(results_file).exists():
-        with open(results_file, "r") as f:
-            results = json.load(f)
-    else:
-        # Use all chunks as results (for demo)
-        results = {
-            q["query_id"]: [
-                c.get("chunk_id", f"chunk_{i}") for i, c in enumerate(queries[:10])
-            ]
-            for q in queries
-        }
-
-    # Compute overall metrics
-    overall = metrics_calc.compute_overall_metrics(results, k_values=[1, 3, 5, 10])
-
-    # Print results
-    print("\n" + "=" * 60)
-    print("RETRIEVAL EVALUATION RESULTS")
-    print("=" * 60)
-
-    print("\nPrecision, Recall, F1 by K:")
-    for k in [1, 3, 5, 10]:
-        print(f"  K={k}:")
-        print(f"    Precision@{k}: {overall.get(f'precision@{k}', 0):.3f}")
-        print(f"    Recall@{k}: {overall.get(f'recall@{k}', 0):.3f}")
-        print(f"    F1@{k}: {overall.get(f'f1@{k}', 0):.3f}")
-
-    print(f"\nMean Reciprocal Rank (MRR): {overall.get('mrr', 0):.3f}")
-    print(f"Mean Average Precision (MAP): {overall.get('map', 0):.3f}")
-
-    print(f"\nOverall Statistics:")
-    print(f"  Total relevant chunks: {overall.get('total_relevant', 0)}")
-    print(f"  Total retrieved chunks: {overall.get('total_retrieved', 0)}")
-    print(f"  Overall Precision@10: {overall.get('overall_precision', 0):.3f}")
-    print(f"  Overall Recall@10: {overall.get('overall_recall', 0):.3f}")
-
-    print("\n" + "=" * 60)
-
-
-if __name__ == "__main__":
-    main()

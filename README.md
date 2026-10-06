@@ -195,7 +195,7 @@ The runner generates three kinds of test query, with relevance labels assigned b
 
 ### In code
 
-`FairWorkRAGPipeline` also accepts `embedding_model` (default `text-embedding-3-large`), `retrieval_alpha`, and `retrieval_beta` (default `0.5` each).  The embedding model is honoured.  The two weights are not yet passed through, because the retriever is built with `alpha=beta=0.5` hardcoded, and the default fusion mode (reciprocal rank fusion) ignores the weights in any case.
+`FairWorkRAGPipeline` accepts `output_dir` and `embedding_model` (default `text-embedding-3-large`).  Retrieval fuses the vector and BM25 rankings with reciprocal rank fusion, which has no weights to tune, so the unused `retrieval_alpha` and `retrieval_beta` options are gone.
 
 ### Stack
 
