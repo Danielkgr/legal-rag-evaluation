@@ -3,18 +3,17 @@ Embedding generation module for legal document chunks.
 Uses OpenAI text-embedding-3-large for high-quality embeddings.
 """
 
-import os
 import json
-from typing import List, Dict, Optional
-from dataclasses import dataclass
 import logging
+import os
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, List, Optional
 
-import openai
 import numpy as np
+import openai
 from tqdm import tqdm
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +27,7 @@ class EmbeddingRecord:
     section_number: Optional[str]
     document_name: str
     chunk_type: str
-    metadata: Dict = None
+    metadata: Optional[Dict] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -105,25 +104,13 @@ class EmbeddingModel:
                     model=self.model_name, input=batch
                 )
                 embeddings.extend([data.embedding for data in response.data])
-            except Exception as e:
-                logger.error(f"Error embedding batch: {e}")
-                # Try embedding individually
-                for text in batch:
-                    try:
-                        emb = self.embed_text(text)
-                        embeddings.append(emb)
-                    except Exception as inner_e:
-                        logger.error(f"Failed to embed: {text[:100]}... - {inner_e}")
-                        embeddings.append(
-                            [0.0] * 3072
-                        )  # Zero vector for failed embeddings
+            except Exception as error:
+                logger.error("Error embedding batch, retrying one at a time: %s", error)
+                # A text that still fails raises, rather than going into the
+                # index as a zero vector that can never be retrieved.
+                embeddings.extend(self.embed_text(text) for text in batch)
 
         return embeddings
-
-    def get_embedding_dimension(self) -> int:
-        """Get the dimension of the embeddings."""
-        # text-embedding-3-large is 3072 dimensions
-        return 3072
 
 
 class EmbeddingManager:
@@ -160,7 +147,7 @@ class EmbeddingManager:
         section_number: Optional[str],
         document_name: str,
         chunk_type: str,
-        metadata: Dict = None,
+        metadata: Optional[Dict] = None,
     ) -> EmbeddingRecord:
         """
         Embed and store a single chunk.
@@ -295,19 +282,12 @@ class EmbeddingManager:
         logger.info(f"Loaded embedding index: {len(self.embeddings)} records")
         return len(self.embeddings)
 
-    def get_embeddings_array(self) -> np.ndarray:
-        """Get all embeddings as a numpy array."""
-        if not self.embeddings:
-            return np.array([])
-
-        return np.array([r.embedding for r in self.embeddings])
-
     def search_by_text(
         self,
         query: str,
         k: int = 5,
-        filter_document: str = None,
-        filter_chunk_type: str = None,
+        filter_document: Optional[str] = None,
+        filter_chunk_type: Optional[str] = None,
     ) -> List[Dict]:
         """
         Search for similar chunks by text query.
@@ -321,86 +301,21 @@ class EmbeddingManager:
         Returns:
             List of matching chunks with scores
         """
-        # Embed the query
-        query_embedding = self.model.embed_text(query)
+        candidates = [
+            r
+            for r in self.embeddings
+            if (not filter_document or r.document_name == filter_document)
+            and (not filter_chunk_type or r.chunk_type == filter_chunk_type)
+        ]
+        if not candidates or k <= 0:
+            return []
 
-        # Compute similarity scores
-        scores = []
-        for r in self.embeddings:
-            # Apply filters
-            if filter_document and r.document_name != filter_document:
-                continue
-            if filter_chunk_type and r.chunk_type != filter_chunk_type:
-                continue
-
-            # Cosine similarity
-            score = np.dot(query_embedding, r.embedding) / (
-                np.linalg.norm(query_embedding) * np.linalg.norm(r.embedding)
-            )
-            scores.append({"chunk": r, "score": float(score)})
-
-        # Sort by score and return top k
-        scores.sort(key=lambda x: x["score"], reverse=True)
-        return scores[:k]
-
-
-def main():
-    """Example usage."""
-    import sys
-
-    # Check for API key
-    if not os.getenv("OPENAI_API_KEY"):
-        print("Error: OPENAI_API_KEY environment variable not set")
-        sys.exit(1)
-
-    # Initialize embedding model
-    model = EmbeddingModel()
-
-    # Create embedding manager
-    manager = EmbeddingManager(model)
-
-    # Sample chunks (in practice, these would come from the chunker)
-    sample_chunks = [
-        {
-            "chunk_id": "fw_act_s5_1",
-            "text": "5 Definitions in this Act In this Act: ordinary hours means the number of hours in a standard working day for an employee",
-            "section_number": "5",
-            "document_name": "fair_work_act_2009",
-            "chunk_type": "definition",
-        },
-        {
-            "chunk_id": "fw_act_s38_1",
-            "text": "38 National employment standards The national employment standards are set out in this Part",
-            "section_number": "38",
-            "document_name": "fair_work_act_2009",
-            "chunk_type": "section",
-        },
-        {
-            "chunk_id": "fw_act_s177_1",
-            "text": "177 Modern awards A modern award may make provision concerning any matter relating to employment",
-            "section_number": "177",
-            "document_name": "fair_work_act_2009",
-            "chunk_type": "section",
-        },
-    ]
-
-    # Add chunks
-    records = manager.add_chunks_batch(sample_chunks)
-    print(f"Added {len(records)} chunks")
-
-    # Save index
-    manager.save_index("sample")
-
-    # Test search
-    query = "What are ordinary hours of work?"
-    results = manager.search_by_text(query, k=2)
-
-    print(f"\nSearch results for: '{query}'")
-    for i, result in enumerate(results, 1):
-        print(f"\n{i}. Score: {result['score']:.3f}")
-        print(f"   Section: {result['chunk'].section_number}")
-        print(f"   Text: {result['chunk'].text[:100]}...")
-
-
-if __name__ == "__main__":
-    main()
+        query_vector = np.asarray(self.model.embed_text(query), dtype=float)
+        matrix = np.asarray([r.embedding for r in candidates], dtype=float)
+        norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_vector)
+        # A zero vector has no direction, so it scores 0 rather than NaN.
+        scores = np.divide(
+            matrix @ query_vector, norms, out=np.zeros(len(candidates)), where=norms > 0
+        )
+        top = np.argsort(-scores, kind="stable")[:k]
+        return [{"chunk": candidates[i], "score": float(scores[i])} for i in top]

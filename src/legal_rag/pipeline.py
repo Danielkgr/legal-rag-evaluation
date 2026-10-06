@@ -2,19 +2,18 @@
 Main pipeline for processing Fair Work Act and modern awards documents.
 """
 
-import os
-import json
 import argparse
-from pathlib import Path
-from typing import List, Dict
+import json
 import logging
+from pathlib import Path
+from typing import Dict, List
 
-from legal_rag.data_preprocessing.pdf_parser import PDFParser
 from legal_rag.data_preprocessing.chunking import LegalChunker
 from legal_rag.data_preprocessing.metadata_extractor import MetadataExtractor
-from legal_rag.embedding import EmbeddingModel, EmbeddingManager
-from legal_rag.retrieval import HybridRetriever
+from legal_rag.data_preprocessing.pdf_parser import PDFParser
+from legal_rag.embedding import EmbeddingManager, EmbeddingModel
 from legal_rag.llm import LegalChatBot, describe_corpus, get_llm
+from legal_rag.retrieval import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +29,6 @@ class FairWorkRAGPipeline:
         data_dir: str = "data",
         output_dir: str = "data/processed",
         embedding_model: str = "text-embedding-3-large",
-        retrieval_alpha: float = 0.5,
-        retrieval_beta: float = 0.5,
     ):
         """
         Initialize the RAG pipeline.
@@ -40,8 +37,6 @@ class FairWorkRAGPipeline:
             data_dir: Directory containing raw PDFs
             output_dir: Directory for processed outputs
             embedding_model: OpenAI embedding model name
-            retrieval_alpha: Weight for vector search
-            retrieval_beta: Weight for BM25
         """
         self.data_dir = Path(data_dir)
         self.output_dir = Path(output_dir)
@@ -139,7 +134,7 @@ class FairWorkRAGPipeline:
         self.embedding_manager.save_index(index_name)
 
         # Initialize retriever
-        self.retriever = HybridRetriever(self.embedding_manager, alpha=0.5, beta=0.5)
+        self.retriever = HybridRetriever(self.embedding_manager)
 
         logger.info("Index built successfully")
 
@@ -148,7 +143,7 @@ class FairWorkRAGPipeline:
         logger.info(f"Loading index: {index_name}")
         count = self.embedding_manager.load_index(index_name)
 
-        self.retriever = HybridRetriever(self.embedding_manager, alpha=0.5, beta=0.5)
+        self.retriever = HybridRetriever(self.embedding_manager)
 
         logger.info(f"Loaded {count} chunks from index")
 
@@ -323,7 +318,7 @@ def main():
         print(f"\nAnswer:\n{result['response']}")
 
         if result["sources"]:
-            print(f"\nSources:")
+            print("\nSources:")
             for source in result["sources"][:5]:
                 print(f"  - {source['document']} - Section {source['section']}")
 

@@ -9,8 +9,6 @@ client so no request leaves the machine.
 
 import types
 
-import pytest
-
 from legal_rag import llm
 from legal_rag.llm import OpenAIChatLLM, get_llm
 
