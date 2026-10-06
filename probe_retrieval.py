@@ -12,7 +12,7 @@ import os, sys, json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
-from pipeline import FairWorkRAGPipeline
+from legal_rag.pipeline import FairWorkRAGPipeline
 
 # (question, expected document stem). Written before looking at any results.
 PROBE = [

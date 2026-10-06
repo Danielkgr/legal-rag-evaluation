@@ -69,6 +69,11 @@ python src/pipeline.py --mode process \
     --output-dir data/processed
 ```
 
+That is the command as it was run, from the earlier layout in which the
+modules sat directly under `src/`.  The code now lives in the `legal_rag`
+package, and the equivalent command is
+`python -m legal_rag.pipeline --mode process --pdfs ... --output-dir data/processed`.
+
 - `probe_retrieval.py` -> `results/retrieval_probe.json`: eight cross-Act
   queries chosen by hand **before** any retrieval, each labelled with the Act
   that answers it. The script only asks which Act the top hits come from; it is

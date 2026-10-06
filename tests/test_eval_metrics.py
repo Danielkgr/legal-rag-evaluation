@@ -10,7 +10,7 @@ no-relevant-chunks convention, so the behaviour is documented rather than
 surprising.
 """
 
-from evaluation.eval_metrics import EvaluationMetrics
+from legal_rag.evaluation.eval_metrics import EvaluationMetrics
 
 
 def _ann(query_id, chunk_id, score):

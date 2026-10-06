@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legal-rag-evaluation"
+version = "0.2.0"
+description = "Hybrid retrieval and grounded answers over Australian legislation, with an evaluation that says which numbers mean something"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Daniel Glynn-Roe" }]
+dependencies = [
+    "numpy>=1.24",
+    "openai>=1.0",
+    "pdfplumber>=0.9",
+    "rank-bm25>=0.2.2",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# The local Gemma path loads a checkpoint with transformers.  It is the only
+# part of the project that needs torch.
+gemma = [
+    "accelerate>=0.24",
+    "torch>=2.0",
+    "transformers>=4.35",
+]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+legal-rag = "legal_rag.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Danielkgr/legal-rag-evaluation"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -14,7 +14,7 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from tqdm import tqdm
 
-from embedding import EmbeddingManager
+from legal_rag.embedding import EmbeddingManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

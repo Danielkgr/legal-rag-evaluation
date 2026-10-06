@@ -3,22 +3,18 @@ Main pipeline for processing Fair Work Act and modern awards documents.
 """
 
 import os
-import sys
 import json
 import argparse
 from pathlib import Path
 from typing import List, Dict
 import logging
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from data_preprocessing.pdf_parser import PDFParser
-from data_preprocessing.chunking import LegalChunker
-from data_preprocessing.metadata_extractor import MetadataExtractor
-from embedding import EmbeddingModel, EmbeddingManager
-from retrieval import HybridRetriever
-from llm import GemmaLLM, LegalChatBot, get_llm
+from legal_rag.data_preprocessing.pdf_parser import PDFParser
+from legal_rag.data_preprocessing.chunking import LegalChunker
+from legal_rag.data_preprocessing.metadata_extractor import MetadataExtractor
+from legal_rag.embedding import EmbeddingModel, EmbeddingManager
+from legal_rag.retrieval import HybridRetriever
+from legal_rag.llm import GemmaLLM, LegalChatBot, get_llm
 
 logging.basicConfig(
     level=logging.INFO,

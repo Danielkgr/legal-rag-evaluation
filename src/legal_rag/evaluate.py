@@ -11,13 +11,11 @@ from pathlib import Path
 from typing import List, Dict
 import logging
 
-sys.path.insert(0, str(Path(__file__).parent))
-
-from pipeline import FairWorkRAGPipeline
-from embedding import EmbeddingModel, EmbeddingManager
-from retrieval import HybridRetriever
-from evaluation.eval_generator import EvaluationSetGenerator
-from evaluation.eval_metrics import EvaluationMetrics
+from legal_rag.pipeline import FairWorkRAGPipeline
+from legal_rag.embedding import EmbeddingModel, EmbeddingManager
+from legal_rag.retrieval import HybridRetriever
+from legal_rag.evaluation.eval_generator import EvaluationSetGenerator
+from legal_rag.evaluation.eval_metrics import EvaluationMetrics
 
 logging.basicConfig(
     level=logging.INFO,
