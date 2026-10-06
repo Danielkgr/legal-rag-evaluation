@@ -11,6 +11,8 @@ import logging
 import os
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from legal_rag.citations import verify_citations
+
 # `torch` and `transformers` are imported lazily inside GemmaLLM so the
 # retrieval and metrics path can be imported without the multi-gigabyte ML
 # stack.  See tests/test_imports.py.
@@ -355,14 +357,15 @@ class LegalChatBot:
         retrieved chunks themselves and returns citations into them.  Other
         backends get the chunks as numbered extracts in the prompt.
         """
-        sources: List[Dict] = []
+        results: list = []
         citations: List[Dict] = []
         metadata: Dict = {"query": query, "use_rag": use_rag}
         history = self.recent_history()
 
-        if use_rag and hasattr(self.llm, "answer_with_documents"):
+        if use_rag:
             results = self._retrieve(query)
-            sources = self._sources(results)
+        sources = self._sources(results)
+        if use_rag and hasattr(self.llm, "answer_with_documents"):
             reply = self.llm.answer_with_documents(
                 query, results, history=history, system=self.system_prompt
             )
@@ -376,7 +379,7 @@ class LegalChatBot:
             )
         else:
             if use_rag:
-                context, sources = self._build_context(query)
+                context = self._context(results)
                 prompt = f"""Answer the following question using only the extracts below.
 
 Question: {query}
@@ -408,10 +411,16 @@ Answer:"""
             ]
         )
         metadata["conversation_length"] = len(self.conversation_history)
+        corpus = getattr(
+            getattr(self.retriever, "embedding_manager", None), "embeddings", []
+        )
+        check = verify_citations(response, results, corpus)
         return {
             "response": response,
             "sources": sources,
             "citations": citations,
+            "citation_check": check.as_dict(),
+            "check_lines": check.lines(),
             "metadata": metadata,
         }
 
