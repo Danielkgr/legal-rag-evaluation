@@ -82,6 +82,23 @@ python -m legal_rag.pipeline --mode chat --backend claude --query "May a telemar
 
 ## How it works
 
+```mermaid
+flowchart LR
+    pdf["Act PDFs"] --> parse["Parse<br/>pdfplumber"]
+    parse --> chunk["Chunk at<br/>section headings"]
+    chunk --> dense["Dense index<br/>embeddings"]
+    chunk --> bm25["BM25 index"]
+    question(["Question"]) --> dense
+    question --> bm25
+    dense --> fuse["Reciprocal<br/>rank fusion"]
+    bm25 --> fuse
+    fuse --> expand["Expand: cited sections<br/>and defined terms"]
+    expand --> answer["Answer with citations<br/>Claude, local server, or Gemma"]
+    answer --> verify["Verify cited sections<br/>against retrieved text"]
+    fuse --> evaluate["Evaluate: routing probe<br/>and section-level harness"]
+```
+
+
 | Component | Approach |
 |---|---|
 | **Legal-aware chunking** | Cuts each Act at the section headings that start a line, so a section that crosses a page break stays in one chunk.  No text is dropped, contents entries and running headers are not mistaken for headings, and schedule clauses are labelled with their schedule. |
