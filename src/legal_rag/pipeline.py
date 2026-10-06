@@ -113,6 +113,9 @@ class FairWorkRAGPipeline:
                     "metadata": {
                         "page_numbers": chunk.page_numbers,
                         "heading": chunk.metadata.get("heading", ""),
+                        "sections": chunk.metadata.get("sections", []),
+                        "schedule": chunk.metadata.get("schedule"),
+                        "part_of_section": chunk.metadata.get("part_of_section"),
                         "cross_references": chunk.metadata.get("cross_references", []),
                         "definitions": chunk.metadata.get("definitions", []),
                     },

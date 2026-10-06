@@ -57,7 +57,7 @@ Two questions went through the full path of retrieval, prompt, and generation ag
 
 | Component | Approach |
 |---|---|
-| **Legal-aware chunking** | Keeps section boundaries, heading hierarchy, and cross-reference links intact when the document is split. |
+| **Legal-aware chunking** | Cuts each Act at the section headings that start a line, so a section that crosses a page break stays in one chunk.  No text is dropped, contents entries and running headers are not mistaken for headings, and schedule clauses are labelled with their schedule. |
 | **Hybrid retrieval** | Combines dense vector similarity with BM25 keyword matching through reciprocal rank fusion. |
 | **Cross-reference tracking** | Extracts and indexes explicit references between provisions (such as "see s 35") so that related sections surface together. |
 | **Defined-term indexing** | Identifies statutory definitions when each chunk is created, so a term can be resolved at query time. |
@@ -66,7 +66,7 @@ Two questions went through the full path of retrieval, prompt, and generation ag
 
 Legal questions need both kinds of search.  "What is unfair dismissal" is a semantic question that vector search handles well.  "Section 340(1)" is an exact string that BM25 finds and vector search often misses.  Fusing the two covers both kinds of query.
 
-Fixed-size chunking breaks provisions mid-section, cuts cross-references off from their targets, and makes chunks whose meaning depends on text outside them.  The chunker instead follows the detected heading hierarchy, so each section becomes one self-contained unit.
+Fixed-size chunking breaks provisions mid-section and makes chunks whose meaning depends on text outside them.  The chunker instead cuts at section headings, so each section becomes one unit, and splits a section longer than 2,000 characters at its subsections, with every piece keeping the section number.
 
 <br>
 
