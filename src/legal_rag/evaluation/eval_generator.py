@@ -1,6 +1,12 @@
 """
 Evaluation set generation module.
-Creates test queries with gold-standard relevance annotations.
+Creates templated test queries and automatic relevance labels.
+
+Nobody checks these labels.  A templated fact query marks every chunk of its
+source document relevant, and the hypothetical and cross-reference queries are
+Fair Work Act questions written into the code, which have no relevant chunk
+unless a document named fair_work_act_2009 is indexed.  The scores they
+produce describe this generator more than retrieval quality; see the README.
 """
 
 import json
@@ -384,7 +390,11 @@ class EvaluationSetGenerator:
 
         Args:
             chunks: List of chunk dicts
-            auto_annotate: Whether to auto-annotate based on section matching
+            auto_annotate: Label every query and chunk pair.  A chunk scores 2
+                when its document is one of the query's expected documents
+                or its section is one of the expected sections, 1 when its
+                section number contains an expected section as a substring,
+                and 0 otherwise.
 
         Returns:
             List of relevance annotations

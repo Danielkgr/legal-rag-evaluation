@@ -33,6 +33,9 @@ This is a real run, done on one machine with no commercial key.  [results/PROVEN
 
 The corpus is two Commonwealth Acts, chosen because they are short and clearly distinct.  Indexing them produced **247 chunks**, 104 from the *Spam Act 2003* (Cth) and 143 from the *Do Not Call Register Act 2006* (Cth).
 
+> [!IMPORTANT]
+> This run predates the rewritten chunker, which cuts each Act at different places.  The run has not been repeated with the current code, so the figures below describe the earlier version.
+
 ### Retrieval
 
 Eight cross-Act questions were written by hand before any retrieval ran, and each was labelled with the Act that answers it.  The probe asks only whether the hybrid retriever sends each query to the right Act.
@@ -49,7 +52,7 @@ The single miss at rank 1 is a civil-penalty question.  Both Acts impose civil p
 Two questions went through the full path of retrieval, prompt, and generation against a local OpenAI-compatible model.  One produced a correctly cited answer, pointing to s 11 of the *Do Not Call Register Act 2006* (Cth) for the prohibition and s 10 for the outline.  The other declined.  Its top chunks did not surface the operative provision, and the assistant reported that instead of inventing a citation.  See `results/chat_demo.json`.
 
 > [!WARNING]
-> The built-in evaluation numbers are not the headline.  `evaluate.py` writes its test queries from the same chunks it then scores, and labels relevance by shallow word overlap, so it grades retrieval against labels drawn from the very overlap the retriever rewards.  It also scores a query with no relevant chunk as recall 1.0 and MAP 1.0 by convention.  The printed figures for this run (recall@1 0.60, MAP 0.62, precision@1 0.36) therefore describe the query generator rather than retrieval quality.  The three metric tests in `tests/` pin this convention down so that it stays documented.
+> The built-in evaluation numbers are not the headline.  Of the 100 queries `evaluate.py` generates, 40 are templates filled from sampled chunks, and each marks every chunk of its source Act relevant.  The other 60 are Fair Work Act questions written into the code, and on this corpus, which holds no Fair Work Act, they have no relevant chunk at all.  The metric code scores such a query as recall 1.0 and MAP 1.0 by convention, so recall@1 cannot fall below 0.60 and precision@1 cannot rise above 0.40, whatever the retriever does.  The printed figures for this run (recall@1 0.60, MAP 0.62, precision@1 0.36) describe the query generator rather than retrieval quality.  [results/PROVENANCE.md](results/PROVENANCE.md) sets out the arithmetic, and `tests/test_eval_generator.py` and `tests/test_eval_metrics.py` pin the behaviour down.
 
 <br>
 
@@ -153,13 +156,13 @@ Processing writes `data/processed/chunks.json` and an embedding index at `data/p
 python -m legal_rag.evaluate --pdfs data/raw/fair_work_act_2009.pdf --num-queries 100 --eval-dir evaluation_set
 ```
 
-The runner generates three kinds of test query, with relevance labels derived automatically from the indexed chunks rather than checked by a person.  Read the warning under [Results](#results) before relying on its scores.
+The runner generates three kinds of test query, with relevance labels assigned by rule rather than checked by a person.  Read the warning under [Results](#results) before relying on its scores.  The report says how many queries had no relevant chunk.
 
-| Query type | Share | What it tests |
-|---|:--:|---|
-| **Fact-based** | 40% | Definitions, specific sections, and numeric thresholds |
-| **Hypothetical** | 35% | Workplace situations that need the statute applied |
-| **Cross-referencing** | 25% | Lookups that chain from one provision to another |
+| Query type | Share | How it is written | What counts as relevant |
+|---|:--:|---|---|
+| **Fact-based** | 40% | A template filled from a sampled chunk, such as "What is the definition of '<frequent word>' in the <Act>?" | Every chunk of the source Act |
+| **Hypothetical** | 35% | Fair Work Act questions written into the code, such as "How much annual leave is an employee entitled to?" | Chunks of a document named `fair_work_act_2009` |
+| **Cross-referencing** | 25% | Fair Work Act questions written into the code, such as "How do sections 31 and 32 interact regarding national employment standards?" | Chunks of a document named `fair_work_act_2009` |
 
 | Metric | Meaning |
 |---|---|

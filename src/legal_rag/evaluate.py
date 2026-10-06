@@ -137,6 +137,15 @@ class EvaluationRunner:
                 "num_queries": len(queries),
                 "query_type_distribution": {},
                 "num_annotations": len(annotations),
+                # Each of these scores recall 1.0 and MAP 1.0 by convention.
+                "queries_without_relevant_chunks": sum(
+                    1
+                    for q in queries
+                    if not any(
+                        a.query_id == q.query_id and a.relevance_score >= 1
+                        for a in annotations
+                    )
+                ),
             },
             "metrics": overall,
         }
@@ -173,6 +182,11 @@ class EvaluationRunner:
         print(f"  Chunks created: {summary['num_chunks']}")
         print(f"  Queries generated: {summary['num_queries']}")
         print(f"  Annotations: {summary['num_annotations']}")
+        print(
+            f"  Queries with no relevant chunk: "
+            f"{summary['queries_without_relevant_chunks']}"
+            " (each scores recall 1.0 and MAP 1.0 by convention)"
+        )
 
         print("\nQuery Type Distribution:")
         for qtype, count in summary["query_type_distribution"].items():
