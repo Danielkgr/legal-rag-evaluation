@@ -35,7 +35,7 @@ def _c(text: str, colour: str = "white") -> str:
 # ── constants ───────────────────────────────────────────────────────────────
 
 SRC_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SRC_DIR.parent  # one level up (legal-rag-evaluation root)
+PROJECT_DIR = SRC_DIR.parents[1]  # two levels up (legal-rag-evaluation root)
 
 DEFAULT_PDFS_DIR = SRC_DIR / "data" / "raw"
 DEFAULT_OUTPUT_DIR = SRC_DIR / "data" / "processed"
@@ -248,7 +248,7 @@ def workflow_process_pdf() -> None:
 
     print(f"\n  Processing {len(pdf_paths)} PDF(s) …\n")
     cmd = [
-        sys.executable, str(SRC_DIR / "pipeline.py"),
+        sys.executable, "-m", "legal_rag.pipeline",
         "--mode", "process",
         "--pdfs"
     ] + pdf_paths + [
@@ -286,7 +286,7 @@ def workflow_query() -> None:
         # Build index first
         print(f"\n  Building index from {len(pdf_paths)} PDF(s) …\n")
         cmd = [
-            sys.executable, str(SRC_DIR / "pipeline.py"),
+            sys.executable, "-m", "legal_rag.pipeline",
             "--mode", "process", "--pdfs"
         ] + pdf_paths + ["--output-dir", out_dir]
         subprocess.run(cmd, env={**os.environ})
@@ -302,7 +302,7 @@ def workflow_query() -> None:
 
     out_dir = DEFAULT_OUTPUT_DIR
     cmd = [
-        sys.executable, str(SRC_DIR / "pipeline.py"),
+        sys.executable, "-m", "legal_rag.pipeline",
         "--mode", "query",
         "--query", query,
         "--k", str(k),
@@ -325,7 +325,7 @@ def workflow_chat() -> None:
         ],
     )
 
-    cmd = [sys.executable, str(SRC_DIR / "chat.py")]
+    cmd = [sys.executable, "-m", "legal_rag.chat"]
 
     # Ensure index is loaded
     if chat_option == "rag":
@@ -368,7 +368,7 @@ def workflow_evaluate() -> None:
 
     print(f"\n  Running evaluation with {num_queries} queries …\n")
     cmd = [
-        sys.executable, str(SRC_DIR / "evaluate.py"),
+        sys.executable, "-m", "legal_rag.evaluate",
         "--pdfs"
     ] + pdf_paths + [
         "--num-queries", str(num_queries),

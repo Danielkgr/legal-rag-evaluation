@@ -11,8 +11,8 @@ import types
 
 import pytest
 
-import llm
-from llm import OpenAIChatLLM, get_llm
+from legal_rag import llm
+from legal_rag.llm import OpenAIChatLLM, get_llm
 
 
 class _FakeCompletions:

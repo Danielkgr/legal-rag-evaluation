@@ -79,8 +79,10 @@ Embeddings and chat answers can come from either of two places.  The hosted path
 ### 1. Install
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[gemma]"   # drop [gemma] if you will not run the local Gemma model
 ```
+
+This installs one package, `legal_rag`, and a `legal-rag` command that opens the interactive menu.
 
 ### 2. Choose a backend
 
@@ -117,7 +119,7 @@ pytest
 ### Interactive CLI
 
 ```bash
-python src/cli.py      # or ./fairwork from the project root
+legal-rag      # or ./fairwork from the project root, without installing
 ```
 
 The menu walks through choosing PDFs, an embedding model, and output folders, so no flags are needed.
@@ -134,13 +136,13 @@ The menu walks through choosing PDFs, an embedding model, and output folders, so
 
 ```bash
 # Parse PDFs into chunks and build the index
-python src/pipeline.py --mode process --pdfs data/raw/fair_work_act_2009.pdf --output-dir data/processed
+python -m legal_rag.pipeline --mode process --pdfs data/raw/fair_work_act_2009.pdf --output-dir data/processed
 
 # Search the index
-python src/pipeline.py --mode query --query "What is the definition of employee?" --k 10 --load-index
+python -m legal_rag.pipeline --mode query --query "What is the definition of employee?" --k 10 --load-index
 
 # Chat over the index
-python src/chat.py --load-index
+python -m legal_rag.chat --load-index
 ```
 
 Processing writes `data/processed/chunks.json` and an embedding index at `data/processed/embeddings/fairwork_index_index.json`.  The PDF path above is only an example, so point `--pdfs` at your own documents in `data/raw/`.
@@ -148,7 +150,7 @@ Processing writes `data/processed/chunks.json` and an embedding index at `data/p
 ### Evaluation
 
 ```bash
-python src/evaluate.py --pdfs data/raw/fair_work_act_2009.pdf --num-queries 100 --eval-dir evaluation_set
+python -m legal_rag.evaluate --pdfs data/raw/fair_work_act_2009.pdf --num-queries 100 --eval-dir evaluation_set
 ```
 
 The runner generates three kinds of test query, with relevance labels derived automatically from the indexed chunks rather than checked by a person.  Read the warning under [Results](#results) before relying on its scores.
@@ -205,7 +207,7 @@ The runner generates three kinds of test query, with relevance labels derived au
 
 ```text
 legal-rag-evaluation/
-  src/
+  src/legal_rag/
     data_preprocessing/
       pdf_parser.py            Structure-preserving PDF parsing (pdfplumber)
       chunking.py              Legal-aware chunker that keeps section boundaries
@@ -216,7 +218,7 @@ legal-rag-evaluation/
     evaluation/
       eval_generator.py        Fact, hypothetical, and cross-reference query synthesis
       eval_metrics.py          Precision, recall, MRR, and MAP
-    cli.py                     Interactive menu, also run by ./fairwork
+    cli.py                     Interactive menu, run by legal-rag or ./fairwork
     pipeline.py                Main orchestration and command-line entry point
     chat.py                    Interactive chat loop
     evaluate.py                Evaluation runner, which generates and scores test sets
@@ -226,6 +228,7 @@ legal-rag-evaluation/
   evaluation_set/              Generated queries and annotations (ignored by git)
   results/                     Artefacts from the recorded run, with PROVENANCE.md
   tests/                       Import, chat-client, and metric-convention tests
+  pyproject.toml               Package metadata, the legal-rag command, and pytest settings
   requirements.txt             Runtime dependencies
   requirements-dev.txt         Test environment, without torch
 ```

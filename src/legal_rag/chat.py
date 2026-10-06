@@ -9,11 +9,8 @@ from pathlib import Path
 from typing import List, Dict
 import logging
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from pipeline import FairWorkRAGPipeline
-from llm import GemmaLLM
+from legal_rag.pipeline import FairWorkRAGPipeline
+from legal_rag.llm import GemmaLLM
 
 logging.basicConfig(
     level=logging.INFO,

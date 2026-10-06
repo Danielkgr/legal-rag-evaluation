@@ -19,8 +19,8 @@ def test_torch_is_not_installed_in_the_minimal_env():
 
 
 def test_evaluate_imports_without_torch():
-    import evaluate  # noqa: F401
+    import legal_rag.evaluate  # noqa: F401
 
 
 def test_pipeline_imports_without_torch():
-    import pipeline  # noqa: F401
+    import legal_rag.pipeline  # noqa: F401
