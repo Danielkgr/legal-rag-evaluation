@@ -89,17 +89,15 @@ class FairWorkRAGPipeline:
 
             # Extract metadata
             for chunk in chunks:
-                cross_refs = self.metadata_extractor.extract_cross_references(
-                    chunk.text, chunk.section_number
+                chunk.metadata["cross_references"] = (
+                    self.metadata_extractor.extract_cross_references(
+                        chunk.text, chunk.metadata.get("sections", [])
+                    )
                 )
-                definitions = self.metadata_extractor.extract_definitions(
-                    chunk.text, chunk.section_number
-                )
-
-                chunk.metadata["cross_references"] = [
-                    r.reference_text for r in cross_refs
+                chunk.metadata["definitions"] = [
+                    d.term
+                    for d in self.metadata_extractor.extract_definitions(chunk.text)
                 ]
-                chunk.metadata["definitions"] = [d.term for d in definitions]
 
             # Convert to dicts for embedding
             chunk_dicts = []
@@ -154,13 +152,15 @@ class FairWorkRAGPipeline:
 
         logger.info(f"Loaded {count} chunks from index")
 
-    def search(self, query: str, k: int = 10) -> List[Dict]:
+    def search(self, query: str, k: int = 10, expand: bool = False) -> List[Dict]:
         """
         Search the index for relevant documents.
 
         Args:
             query: Search query
             k: Number of results
+            expand: Also return the sections the results cite and the
+                definitions of terms they use, marked as expansions
 
         Returns:
             List of retrieved chunks with scores
@@ -170,7 +170,7 @@ class FairWorkRAGPipeline:
                 "Index not loaded. Call build_index() or load_index() first."
             )
 
-        results = self.retriever.retrieve(query, k=k)
+        results = self.retriever.retrieve(query, k=k, expand=expand)
 
         return [
             {
@@ -182,6 +182,8 @@ class FairWorkRAGPipeline:
                 "score": r.combined_score,
                 "vector_score": r.vector_score,
                 "bm25_score": r.bm25_score,
+                "expansion": r.expansion,
+                "expansion_reason": r.expansion_reason,
             }
             for r in results
         ]
@@ -260,13 +262,15 @@ def main():
         pipeline.load_index(args.index_name)
 
         # Search
-        results = pipeline.search(args.query, k=args.k)
+        results = pipeline.search(args.query, k=args.k, expand=True)
 
         print(f"\nSearch results for: '{args.query}'")
         print("=" * 60)
 
         for i, result in enumerate(results, 1):
             print(f"\n[{i}] {result['document']} - Section {result['section']}")
+            if result["expansion"]:
+                print(f"    Added: {result['expansion_reason']}")
             print(f"    Type: {result['type']}")
             print(f"    Score: {result['score']:.3f}")
             print(f"    Text: {result['text'][:200]}...")

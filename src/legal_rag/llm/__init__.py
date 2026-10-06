@@ -324,7 +324,7 @@ class LegalChatBot:
             Context string and list of source metadata
         """
         # Retrieve relevant chunks
-        results = self.retriever.retrieve(query, k=self.max_retrieved)
+        results = self.retriever.retrieve(query, k=self.max_retrieved, expand=True)
 
         # Build context
         context_parts = []
@@ -336,6 +336,8 @@ class LegalChatBot:
                 if result.section_number
                 else "Unknown section"
             )
+            if result.expansion:
+                section_info += f" (added because it {result.expansion_reason})"
 
             chunk_text = f"[{i}] {result.document_name} - {section_info}\nType: {result.chunk_type}\nText: {result.text}"
             context_parts.append(chunk_text)
@@ -345,6 +347,7 @@ class LegalChatBot:
                     "chunk_id": result.chunk_id,
                     "section": result.section_number,
                     "document": result.document_name,
+                    "expansion": result.expansion,
                     "score": result.combined_score,
                 }
             )
