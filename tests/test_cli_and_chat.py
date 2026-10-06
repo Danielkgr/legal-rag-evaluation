@@ -96,7 +96,7 @@ def test_chat_main_builds_the_backend_with_get_llm(monkeypatch):
     sentinel = object()
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     monkeypatch.setattr(chat, "FairWorkRAGPipeline", lambda **kwargs: rag)
-    monkeypatch.setattr(chat, "get_llm", lambda: sentinel)
+    monkeypatch.setattr(chat, "get_llm", lambda backend=None: sentinel)
     monkeypatch.setattr(chat.ChatInterface, "start", lambda self: None)
     monkeypatch.setattr(sys, "argv", ["chat", "--no-rag"])
     chat.main()

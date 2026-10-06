@@ -236,14 +236,31 @@ class OpenAIChatLLM:
         return self.chat(_messages(prompt, history, system), max_tokens=max_tokens)
 
 
-def get_llm(**kwargs):
-    """
-    Build the chat client from the environment.
+BACKENDS = ("claude", "openai", "gemma")
 
-    If an OpenAI-compatible endpoint is configured (CHAT_BASE_URL or
-    OPENAI_CHAT_BASE_URL), return OpenAIChatLLM.  Otherwise fall back to the
-    local transformers-backed GemmaLLM.
+
+def get_llm(backend: Optional[str] = None, **kwargs):
     """
+    Build the answer backend.
+
+    backend, or CHAT_BACKEND when it is not given, picks one of "claude",
+    "openai", or "gemma".  With neither set, an OpenAI-compatible endpoint in
+    CHAT_BASE_URL or OPENAI_CHAT_BASE_URL selects OpenAIChatLLM, and otherwise
+    the local transformers-backed GemmaLLM is used.
+    """
+    backend = (backend or os.getenv("CHAT_BACKEND") or "").strip().lower()
+    if backend == "claude":
+        from legal_rag.llm.claude import ClaudeLLM
+
+        return ClaudeLLM(**kwargs)
+    if backend == "openai":
+        return OpenAIChatLLM(**kwargs)
+    if backend == "gemma":
+        return GemmaLLM(**kwargs)
+    if backend:
+        raise ValueError(
+            f"Unknown backend {backend!r}; use one of {', '.join(BACKENDS)}"
+        )
     endpoint = os.getenv("CHAT_BASE_URL") or os.getenv("OPENAI_CHAT_BASE_URL")
     if endpoint:
         return OpenAIChatLLM(**kwargs)
@@ -285,12 +302,25 @@ class LegalChatBot:
         self.history_turns = history_turns
         self.conversation_history: List[Dict[str, str]] = []
 
-    def _build_context(self, query: str) -> Tuple[str, List[Dict]]:
-        """Retrieve for the query and format the chunks as numbered extracts."""
-        results = self.retriever.retrieve(query, k=self.max_retrieved, expand=True)
+    def _retrieve(self, query: str) -> list:
+        return self.retriever.retrieve(query, k=self.max_retrieved, expand=True)
 
-        context_parts = []
-        sources = []
+    @staticmethod
+    def _sources(results) -> List[Dict]:
+        return [
+            {
+                "chunk_id": result.chunk_id,
+                "section": result.section_number,
+                "document": result.document_name,
+                "expansion": result.expansion,
+                "score": result.combined_score,
+            }
+            for result in results
+        ]
+
+    @staticmethod
+    def _context(results) -> str:
+        parts = []
         for i, result in enumerate(results, 1):
             section_info = (
                 f"Section {result.section_number}"
@@ -299,20 +329,16 @@ class LegalChatBot:
             )
             if result.expansion:
                 section_info += f" (added because it {result.expansion_reason})"
-            context_parts.append(
+            parts.append(
                 f"[{i}] {result.document_name} - {section_info}\n"
                 f"Type: {result.chunk_type}\nText: {result.text}"
             )
-            sources.append(
-                {
-                    "chunk_id": result.chunk_id,
-                    "section": result.section_number,
-                    "document": result.document_name,
-                    "expansion": result.expansion,
-                    "score": result.combined_score,
-                }
-            )
-        return "\n\n".join(context_parts), sources
+        return "\n\n".join(parts)
+
+    def _build_context(self, query: str) -> Tuple[str, List[Dict]]:
+        """Retrieve for the query and format the chunks as numbered extracts."""
+        results = self._retrieve(query)
+        return self._context(results), self._sources(results)
 
     def recent_history(self) -> List[Dict[str, str]]:
         """The last history_turns question and answer pairs."""
@@ -324,12 +350,34 @@ class LegalChatBot:
         """
         Answer a question with retrieval, or directly when use_rag is False.
 
-        Returns a dict with 'response', 'sources', and 'metadata'.
+        Returns a dict with 'response', 'sources', 'citations', and 'metadata'.
+        A backend that can read documents, such as ClaudeLLM, gets the
+        retrieved chunks themselves and returns citations into them.  Other
+        backends get the chunks as numbered extracts in the prompt.
         """
         sources: List[Dict] = []
-        if use_rag:
-            context, sources = self._build_context(query)
-            prompt = f"""Answer the following question using only the extracts below.
+        citations: List[Dict] = []
+        metadata: Dict = {"query": query, "use_rag": use_rag}
+        history = self.recent_history()
+
+        if use_rag and hasattr(self.llm, "answer_with_documents"):
+            results = self._retrieve(query)
+            sources = self._sources(results)
+            reply = self.llm.answer_with_documents(
+                query, results, history=history, system=self.system_prompt
+            )
+            response = reply.text
+            citations = [vars(citation) for citation in reply.citations]
+            metadata.update(
+                model=reply.model,
+                stop_reason=reply.stop_reason,
+                served_by_fallback=reply.served_by_fallback,
+                refusal_category=reply.refusal_category,
+            )
+        else:
+            if use_rag:
+                context, sources = self._build_context(query)
+                prompt = f"""Answer the following question using only the extracts below.
 
 Question: {query}
 
@@ -343,16 +391,15 @@ Instructions:
 4. Be precise.
 
 Answer:"""
-        else:
-            prompt = f"""Answer the following question about Australian legislation:
+            else:
+                prompt = f"""Answer the following question about Australian legislation:
 
 {query}
 
 Answer:"""
-
-        response = self.llm.generate(
-            prompt, history=self.recent_history(), system=self.system_prompt
-        )
+            response = self.llm.generate(
+                prompt, history=history, system=self.system_prompt
+            )
 
         self.conversation_history.extend(
             [
@@ -360,14 +407,12 @@ Answer:"""
                 {"role": "assistant", "content": response},
             ]
         )
+        metadata["conversation_length"] = len(self.conversation_history)
         return {
             "response": response,
             "sources": sources,
-            "metadata": {
-                "query": query,
-                "use_rag": use_rag,
-                "conversation_length": len(self.conversation_history),
-            },
+            "citations": citations,
+            "metadata": metadata,
         }
 
     def clear_history(self):

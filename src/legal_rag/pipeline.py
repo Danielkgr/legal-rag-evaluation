@@ -249,6 +249,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="text-embedding-3-large",
         help="Embedding model name on the OpenAI-compatible server",
     )
+    parser.add_argument(
+        "--backend",
+        choices=["claude", "openai", "gemma"],
+        help="Answer backend for chat mode.  Defaults to CHAT_BACKEND.",
+    )
     return parser
 
 
@@ -308,7 +313,7 @@ def main():
         pipeline.load_index(args.index_name)
 
         # Initialize LLM
-        llm = get_llm()
+        llm = get_llm(args.backend)
 
         # Chat
         result = pipeline.chat(args.query, llm=llm)

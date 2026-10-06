@@ -120,6 +120,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-rag", action="store_true", help="Start with retrieval switched off"
     )
+    parser.add_argument(
+        "--backend",
+        choices=["claude", "openai", "gemma"],
+        help="Answer backend.  Defaults to CHAT_BACKEND, then to the local servers.",
+    )
     return parser
 
 
@@ -143,7 +148,7 @@ def main():
         print("Build one first with: python -m legal_rag.pipeline --mode process")
         sys.exit(1)
 
-    ChatInterface(pipeline, get_llm(), rag_enabled=not args.no_rag).start()
+    ChatInterface(pipeline, get_llm(args.backend), rag_enabled=not args.no_rag).start()
 
 
 if __name__ == "__main__":

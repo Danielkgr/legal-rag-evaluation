@@ -12,6 +12,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Daniel Glynn-Roe" }]
 dependencies = [
+    "anthropic>=1.11,<2",
     "numpy>=1.24",
     "openai>=1.0",
     "pdfplumber>=0.9",
@@ -28,7 +29,8 @@ gemma = [
     "torch>=2.0",
     "transformers>=4.35",
 ]
-dev = ["pytest>=8.0", "ruff>=0.6"]
+# httpx2 is the HTTP library under anthropic 1.x; the tests mock it directly.
+dev = ["httpx2>=2.0", "pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
 legal-rag = "legal_rag.cli:main"

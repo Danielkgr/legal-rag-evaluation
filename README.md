@@ -4,7 +4,7 @@
 
 ### Hybrid retrieval over Australian statute, built around the Fair Work Act and modern awards
 
-![CI](https://img.shields.io/github/actions/workflow/status/Danielkgr/legal-rag-evaluation/ci.yml?branch=main&style=for-the-badge&label=CI) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![runs fully local](https://img.shields.io/badge/backend-local_or_OpenAI-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
+![CI](https://img.shields.io/github/actions/workflow/status/Danielkgr/legal-rag-evaluation/ci.yml?branch=main&style=for-the-badge&label=CI) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![backend local, OpenAI-compatible, or Claude](https://img.shields.io/badge/backend-local_%7C_OpenAI_%7C_Claude-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
 
 </div>
 
@@ -18,7 +18,7 @@
 
 A retrieval-augmented generation (**RAG**) pipeline for Australian workplace law.  It parses PDFs of legislation into section-sized chunks, builds a hybrid index, answers questions with sources through a chat interface, and scores its own retrieval with precision, recall, MRR, and MAP.
 
-Embeddings and chat each work two ways, either against OpenAI or against any local OpenAI-compatible server.  The whole pipeline can therefore run end to end with no commercial key.
+Embeddings come from OpenAI or any local OpenAI-compatible server.  Answers come from a local server, a local Gemma checkpoint, or Claude, which cites the exact retrieved text it relies on.  The whole pipeline can therefore run end to end with no commercial key.
 
 > [!CAUTION]
 > This gives no legal advice and is not a production tool.  It ships no documents, so you supply your own PDFs.
@@ -53,6 +53,30 @@ Two questions went through the full path of retrieval, prompt, and generation ag
 
 > [!WARNING]
 > The built-in evaluation numbers are not the headline.  Of the 100 queries `evaluate.py` generates, 40 are templates filled from sampled chunks, and each marks every chunk of its source Act relevant.  The other 60 are Fair Work Act questions written into the code, and on this corpus, which holds no Fair Work Act, they have no relevant chunk at all.  The metric code scores such a query as recall 1.0 and MAP 1.0 by convention, so recall@1 cannot fall below 0.60 and precision@1 cannot rise above 0.40, whatever the retriever does.  The printed figures for this run (recall@1 0.60, MAP 0.62, precision@1 0.36) describe the query generator rather than retrieval quality.  [results/PROVENANCE.md](results/PROVENANCE.md) sets out the arithmetic, and `tests/test_eval_generator.py` and `tests/test_eval_metrics.py` pin the behaviour down.
+
+<br>
+
+## Grounded answers with Claude
+
+With `CHAT_BACKEND=claude`, each retrieved chunk goes to Claude as its own document, titled with the Act and the provision, such as "Do Not Call Register Act 2006, s 11", with citations switched on.  Claude's answer comes back with the exact span of each document it relies on, so every citation points at text that was actually retrieved.  The chat prints those passages under the answer.
+
+| Setting | Value |
+|---|---|
+| Model | `claude-opus-5-5` by default, or `CLAUDE_MODEL` |
+| Effort | `high` by default, or `CLAUDE_EFFORT`.  Opus 5.5 always thinks adaptively, so effort is the setting that trades depth for cost and speed. |
+| Sampling | No temperature or top-p.  Opus 5.5 rejects them, so repeated runs vary. |
+| Refusals | A refusal is reported as a refusal, with its category, never as an answer.  A truncated answer says it was cut off. |
+| Fallback | Server-side fallback is on, because this is a chat answer for a person.  If Opus 5.5's safety classifiers decline a question, the API reruns it on the model Anthropic recommends for that refusal category, and the answer records that a fallback model served it. |
+| Price | $4 per million input tokens and $20 per million output tokens for Opus 5.5.  No cost per question has been measured here. |
+
+```bash
+export ANTHROPIC_API_KEY='sk-ant-...'
+python -m legal_rag.chat --backend claude
+python -m legal_rag.pipeline --mode chat --backend claude --query "May a telemarketer call a number on the Register?"
+```
+
+> [!NOTE]
+> The Claude path has not been run against the live API from this repository.  The tests drive the real `anthropic` SDK against a mocked HTTP transport, including responses with citations, a refusal, a truncated answer, and a fallback.  The commands above are what to run with a key.
 
 <br>
 
@@ -100,6 +124,11 @@ export OPENAI_API_KEY=local
 export OPENAI_BASE_URL=http://localhost:10001/v1   # embeddings
 export CHAT_BASE_URL=http://localhost:10009/v1     # chat generation
 export CHAT_MODEL=<model-name-served-there>
+
+# Option C, Claude answers with citations (embeddings still use option A or B)
+export ANTHROPIC_API_KEY='sk-ant-...'
+export CHAT_BACKEND=claude           # or pass --backend claude
+export CLAUDE_EFFORT=high            # low, medium, high, xhigh, or max
 ```
 
 With `CHAT_BASE_URL` set, generation uses the OpenAI-compatible client.  Without it, generation falls back to a local Gemma checkpoint loaded with `transformers`, `google/gemma-4-12B-it` unless `GEMMA_MODEL` names another.  A GGUF file cannot be loaded that way, so serve it with llama.cpp or a similar server and set `CHAT_BASE_URL` instead.  If the checkpoint fails to load, the chat stops with the error rather than answering.  Embeddings always come from `OPENAI_BASE_URL`, which defaults to OpenAI.
@@ -204,6 +233,7 @@ The runner generates three kinds of test query, with relevance labels assigned b
 | **PDF parsing** | `pdfplumber` |
 | **Keyword search** | `rank-bm25` |
 | **Embeddings and hosted chat** | `openai` |
+| **Claude answers with citations** | `anthropic` |
 | **Local chat** | `transformers` running a Gemma checkpoint, `google/gemma-4-12B-it` by default |
 
 <br>
@@ -219,7 +249,8 @@ legal-rag-evaluation/
       metadata_extractor.py    Cross-reference and definition detection
     embedding/__init__.py      EmbeddingModel (text-embedding-3-large) and EmbeddingManager (in-memory vectors, JSON index)
     retrieval/__init__.py      HybridRetriever, dense vectors plus rank-bm25 with reciprocal rank fusion
-    llm/__init__.py            GemmaLLM (local Gemma 4 12B), OpenAIChatLLM (any OpenAI-compatible server), get_llm(), LegalChatBot
+    llm/__init__.py            GemmaLLM (local transformers checkpoint), OpenAIChatLLM (any OpenAI-compatible server), get_llm(), LegalChatBot
+    llm/claude.py              ClaudeLLM, answers from retrieved chunks with document citations
     evaluation/
       eval_generator.py        Fact, hypothetical, and cross-reference query synthesis
       eval_metrics.py          Precision, recall, MRR, and MAP

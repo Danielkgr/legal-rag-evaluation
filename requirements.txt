@@ -1,5 +1,6 @@
 # Runtime dependencies, including the local Gemma path.  The same list lives
 # in pyproject.toml, where `pip install -e ".[gemma]"` installs it.
+anthropic>=1.11,<2
 numpy>=1.24
 openai>=1.0
 pdfplumber>=0.9

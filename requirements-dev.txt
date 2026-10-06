@@ -3,8 +3,11 @@
 #   pip install -r requirements-dev.txt && pytest
 pytest>=8.0
 ruff>=0.6
+# The Claude tests mock anthropic's HTTP layer, which is httpx2.
+httpx2>=2.0
 
 # The light packages the pipeline imports at module load
+anthropic>=1.11,<2
 numpy>=1.24
 openai>=1.0
 pdfplumber>=0.9
