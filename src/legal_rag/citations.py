@@ -22,7 +22,7 @@ _SUBDIVISIONS = r"(?:\([0-9A-Za-z]{1,6}\))*"
 SECTION_REFERENCE = re.compile(
     rf"(?<!['\u2019])\b(?P<kind>sections?|subsections?|paragraphs?|subparagraphs?|ss?)\.?[ \t]*"
     rf"(?P<first>{_NUMBER}){_SUBDIVISIONS}"
-    rf"(?P<rest>(?:[ \t]*(?:,|-|–|to|and|or)[ \t]*(?:{_NUMBER})?{_SUBDIVISIONS})*)",
+    rf"(?P<rest>(?:[ \t]*(?:,|-|\u2013|to|and|or)[ \t]*(?:{_NUMBER})?{_SUBDIVISIONS})*)",
     re.IGNORECASE,
 )
 SCHEDULE_REFERENCE = re.compile(
@@ -34,7 +34,7 @@ ACT_AFTER = re.compile(
     r"(?P<act>(?:[A-Z][\w'()-]*[ \t]+){1,10}?(?:Act|Regulations?|Rules)"
     r"(?:[ \t]+\d{4})?)"
 )
-_LIST_ITEM = re.compile(rf"(?P<sep>,|-|–|to|and|or)[ \t]*(?P<number>{_NUMBER})?")
+_LIST_ITEM = re.compile(rf"(?P<sep>,|-|\u2013|to|and|or)[ \t]*(?P<number>{_NUMBER})?")
 
 
 @dataclass(frozen=True)
@@ -99,7 +99,7 @@ def _expand(first: str, rest: str) -> List[str]:
         number = item.group("number")
         if not number:
             continue
-        if item.group("sep") in ("to", "-", "–"):
+        if item.group("sep") in ("to", "-", "\u2013"):
             numbers.extend(_range(previous, number))
         else:
             numbers.append(number)

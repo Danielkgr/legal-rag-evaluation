@@ -328,7 +328,7 @@ class EvaluationSetGenerator:
 
     def _extract_key_terms(self, text: str, max_terms: int = 5) -> List[str]:
         """Extract key terms from text."""
-        # Simple keyword extraction - could use NLP for better results
+        # Simple keyword extraction by word frequency
         stop_words = {
             "the",
             "a",

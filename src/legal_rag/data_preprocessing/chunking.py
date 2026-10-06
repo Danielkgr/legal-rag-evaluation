@@ -37,16 +37,16 @@ SECTION_HEADING = re.compile(
 )
 SCHEDULE_HEADING = re.compile(
     r"^[ \t]*Schedule[ \t]+(?P<number>\d{1,3}[A-Z]?)"
-    r"(?:(?:[ \t]*[—–-][ \t]*|[ \t]+)(?P<title>[A-Z][^\n]*))?[ \t]*$"
+    r"(?:(?:[ \t]*[\u2014\u2013-][ \t]*|[ \t]+)(?P<title>[A-Z][^\n]*))?[ \t]*$"
 )
 STRUCTURAL_HEADING = re.compile(
     r"^[ \t]*(?:Chapter|Part|Division|Subdivision)[ \t]+[0-9A-Z]+(?:-[0-9A-Z]+)?\b"
 )
 ENDNOTES_HEADING = re.compile(
-    r"^[ \t]*Endnotes?\b(?:[ \t]+\d+)?(?:[ \t]*[—–-][^\n]*)?[ \t]*$"
+    r"^[ \t]*Endnotes?\b(?:[ \t]+\d+)?(?:[ \t]*[\u2014\u2013-][^\n]*)?[ \t]*$"
 )
 SUBSECTION_START = re.compile(r"^[ \t]*\(\d+[A-Z]*\)", re.MULTILINE)
-DOT_LEADER = re.compile(r"\.{4,}|(?:\.[ \t]){3,}|…")
+DOT_LEADER = re.compile(r"\.{4,}|(?:\.[ \t]){3,}|\u2026")
 PAGE_NUMBER_ONLY = re.compile(r"^[ \t]*\d{1,4}[ \t]*$")
 DEFINITION_TITLE = re.compile(
     r"\b(?:Definitions?|Dictionary|Meaning of|Interpretation)\b", re.IGNORECASE
