@@ -201,6 +201,40 @@ The runner generates three kinds of test query, with relevance labels assigned b
 | **MRR** | Mean reciprocal rank of the first relevant result |
 | **MAP** | Mean average precision across all ranks |
 
+
+### Section-level evaluation
+
+The routing probe asks only whether the right Act comes back.  The section-level harness asks whether the right sections do.  Each question in a gold set names the Act and the sections that answer it, and the harness reports precision@k, recall@k, and MRR at section level, next to the probe's document-level hit rate, for k of 1, 3, 5, and 10.
+
+[gold/fair_work_act_2009.json](gold/fair_work_act_2009.json) holds 36 draft questions on the *Fair Work Act 2009* (Cth), covering the National Employment Standards, termination and redundancy, general protections, unfair dismissal, bullying orders, and records.  Every gold section number was checked against the AustLII page for that section of the consolidated Act, and each question records that page as its source.
+
+> [!IMPORTANT]
+> The question set is provisional and needs the owner's review before any score on it is reported.  Neither the set nor the harness has been run.  The Act's PDF and an embedding model could not be reached from the environment where they were built, so there are no section-level numbers yet.
+
+To run it, set the embedding variables from step 2 of the quick start, then:
+
+```bash
+# 1. Download the Act from the Federal Register of Legislation.  Its register
+#    ID is C2009A00028.  Open the latest compilation's Downloads tab, such as
+#    https://www.legislation.gov.au/C2009A00028/2025-11-07/downloads, and save
+#    its PDF volumes as data/raw/fair_work_act_2009_vol1.pdf, _vol2.pdf, and so on.
+
+# 2. Index the volumes.  Any file named fair_work_act_2009 or fair_work_act_2009_<suffix> counts as the Act.
+python -m legal_rag.pipeline --mode process --pdfs data/raw/fair_work_act_2009_vol*.pdf --output-dir data/processed
+
+# 3. Score retrieval against the gold set.  Writes results/section_eval_fair_work_act.json.
+python -m legal_rag.evaluation.section_eval --gold gold/fair_work_act_2009.json
+```
+
+| Measure | Meaning |
+|---|---|
+| **precision@k** | Share of the top k chunks that belong to a gold section |
+| **recall@k** | Share of the gold sections with at least one chunk in the top k |
+| **MRR** | Mean reciprocal rank of the first chunk from a gold section |
+| **Document hit@k** | Share of questions with a chunk from the right Act in the top k, as in the routing probe |
+
+Retrieval is scored without cross-reference or definition expansion, and a chunk counts for every section whose heading falls inside it.
+
 <br>
 
 ## Reference
@@ -256,6 +290,7 @@ legal-rag-evaluation/
     evaluation/
       eval_generator.py        Fact, hypothetical, and cross-reference query synthesis
       eval_metrics.py          Precision, recall, MRR, and MAP
+      section_eval.py          Section-level precision, recall, and MRR against a gold set
     cli.py                     Interactive menu, run by legal-rag or ./fairwork
     pipeline.py                Main orchestration and command-line entry point
     chat.py                    Interactive chat loop
@@ -264,7 +299,9 @@ legal-rag-evaluation/
     raw/                       Your input PDFs (git ignores this folder)
     processed/                 Chunked JSON and the embedding index, under processed/embeddings/
   evaluation_set/              Generated queries and annotations (ignored by git)
+  gold/                        Hand-labelled question sets with verified section numbers (provisional)
   results/                     Artefacts from the recorded run, with PROVENANCE.md
+  scripts/                     chat_demo.py, which writes the chat demo format
   tests/                       Import, chat-client, and metric-convention tests
   pyproject.toml               Package metadata, the legal-rag command, and pytest settings
   requirements.txt             Runtime dependencies
