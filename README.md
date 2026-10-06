@@ -10,7 +10,7 @@
 
 <br>
 
-> Legislation is hard to retrieve from.  Provisions cite one another and defined terms reach across pages, so a chunk cut in the wrong place loses the meaning it depends on.  This pipeline keeps section boundaries intact, indexes cross-references and definitions, and pairs vector search with keyword matching.  **It also says plainly which of its numbers mean something.**
+> Legislation is hard to retrieve from.  Provisions cite one another and defined terms reach across pages, so a chunk cut in the wrong place loses the meaning it depends on.  This pipeline keeps section boundaries intact, pairs vector search with keyword matching, and brings in the sections and definitions that a retrieved provision depends on.  **It also says plainly which of its numbers mean something.**
 
 <br>
 
@@ -59,8 +59,8 @@ Two questions went through the full path of retrieval, prompt, and generation ag
 |---|---|
 | **Legal-aware chunking** | Cuts each Act at the section headings that start a line, so a section that crosses a page break stays in one chunk.  No text is dropped, contents entries and running headers are not mistaken for headings, and schedule clauses are labelled with their schedule. |
 | **Hybrid retrieval** | Combines dense vector similarity with BM25 keyword matching through reciprocal rank fusion. |
-| **Cross-reference tracking** | Extracts and indexes explicit references between provisions (such as "see s 35") so that related sections surface together. |
-| **Defined-term indexing** | Identifies statutory definitions when each chunk is created, so a term can be resolved at query time. |
+| **Cross-reference expansion** | After retrieval, adds up to three sections of the same Act that the retrieved sections cite, such as "section 12" or "Schedule 2".  A reference to another Act is not followed.  Each added chunk is marked as added and scores below everything retrieved. |
+| **Defined-term expansion** | Indexes every term an Act defines.  When a defined term appears in the question or in a retrieved section, adds the chunk that defines it, or the section its definition points to, up to three per question. |
 
 ### Design decisions
 

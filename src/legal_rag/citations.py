@@ -1,0 +1,117 @@
+"""
+Parse references to provisions, such as "s 11(1)", "sections 16 to 18", or
+"Schedule 2", out of statute text or a model's answer.
+
+The same parser feeds two jobs: cross-reference expansion at retrieval time,
+where a retrieved section's references pull in the sections it cites, and the
+citation verifier, which checks an answer's references against the text that
+was actually retrieved.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import List, Optional
+
+_NUMBER = r"\d{1,4}[A-Z]{0,4}"
+_SUBDIVISIONS = r"(?:\([0-9A-Za-z]{1,6}\))*"
+
+# "s 11", "s. 11(1)", "ss 16-17", "section 6", "subsections 11(1) and (2)",
+# "paragraph 7(a)".  The leading word boundary keeps "has 30" out.
+SECTION_REFERENCE = re.compile(
+    rf"(?<!['\u2019])\b(?P<kind>sections?|subsections?|paragraphs?|subparagraphs?|ss?)\.?[ \t]*"
+    rf"(?P<first>{_NUMBER}){_SUBDIVISIONS}"
+    rf"(?P<rest>(?:[ \t]*(?:,|-|–|to|and|or)[ \t]*(?:{_NUMBER})?{_SUBDIVISIONS})*)",
+    re.IGNORECASE,
+)
+SCHEDULE_REFERENCE = re.compile(
+    r"\b(?:Schedules?|Sch)\.?[ \t]+(?P<number>\d{1,3}[A-Z]?)\b", re.IGNORECASE
+)
+# "of the Spam Act 2003" right after a reference names the Act it points to.
+ACT_AFTER = re.compile(
+    r"^[ \t,]*(?:of|in|under)[ \t]+(?:the[ \t]+)?"
+    r"(?P<act>(?:[A-Z][\w'()-]*[ \t]+){1,10}?(?:Act|Regulations?|Rules)"
+    r"(?:[ \t]+\d{4})?)"
+)
+_LIST_ITEM = re.compile(rf"(?P<sep>,|-|–|to|and|or)[ \t]*(?P<number>{_NUMBER})?")
+
+
+@dataclass(frozen=True)
+class SectionReference:
+    """One provision a piece of text points to."""
+
+    text: str
+    section: Optional[str]
+    schedule: Optional[str] = None
+    act: Optional[str] = None
+    start: int = 0
+    end: int = 0
+
+
+def parse_references(text: str) -> List[SectionReference]:
+    """Return every section and schedule reference in text, in order."""
+    references: List[SectionReference] = []
+    for match in SECTION_REFERENCE.finditer(text):
+        act = _act_after(text, match.end())
+        for number in _expand(match.group("first"), match.group("rest")):
+            references.append(
+                SectionReference(
+                    text=match.group(0).strip(),
+                    section=number.upper(),
+                    act=act,
+                    start=match.start(),
+                    end=match.end(),
+                )
+            )
+    for match in SCHEDULE_REFERENCE.finditer(text):
+        references.append(
+            SectionReference(
+                text=match.group(0),
+                section=None,
+                schedule=match.group("number").upper(),
+                act=_act_after(text, match.end()),
+                start=match.start(),
+                end=match.end(),
+            )
+        )
+    references.sort(key=lambda reference: reference.start)
+    return references
+
+
+def normalise_act(name: str) -> str:
+    """Lower-case an Act name and drop "the", jurisdiction tags, and spacing."""
+    name = re.sub(r"\((?:Cth|Vic|NSW|Qld|SA|WA|Tas|ACT|NT)\)", "", name)
+    name = re.sub(r"\bthe\b", "", name, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", name).strip().lower()
+
+
+def _act_after(text: str, position: int) -> Optional[str]:
+    match = ACT_AFTER.match(text[position : position + 120])
+    return match.group("act").strip() if match else None
+
+
+def _expand(first: str, rest: str) -> List[str]:
+    """Turn "16" plus " to 18" into 16, 17, 18, and "16" plus ", 17" into 16, 17."""
+    numbers = [first]
+    previous = first
+    for item in _LIST_ITEM.finditer(rest or ""):
+        number = item.group("number")
+        if not number:
+            continue
+        if item.group("sep") in ("to", "-", "–"):
+            numbers.extend(_range(previous, number))
+        else:
+            numbers.append(number)
+        previous = number
+    seen = []
+    for number in numbers:
+        if number not in seen:
+            seen.append(number)
+    return seen
+
+
+def _range(low: str, high: str) -> List[str]:
+    if low.isdigit() and high.isdigit() and 0 < int(high) - int(low) <= 20:
+        return [str(n) for n in range(int(low) + 1, int(high) + 1)]
+    return [high]

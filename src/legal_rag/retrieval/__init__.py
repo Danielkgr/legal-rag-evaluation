@@ -4,6 +4,7 @@ Hybrid retrieval system combining vector search and BM25 for legal documents.
 
 import os
 import json
+import re
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from collections import defaultdict
@@ -14,6 +15,7 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from tqdm import tqdm
 
+from legal_rag.data_preprocessing.metadata_extractor import MetadataExtractor
 from legal_rag.embedding import EmbeddingManager
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +35,9 @@ class RetrievalResult:
     bm25_score: float
     combined_score: float
     metadata: Dict = None
+    # Set on chunks added after retrieval: "cross_reference" or "definition".
+    expansion: Optional[str] = None
+    expansion_reason: Optional[str] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -64,6 +69,7 @@ class HybridRetriever:
         self.bm25 = None
         self.tokenized_texts: List[List[str]] = []
         self._build_bm25_index()
+        self._build_structure_index()
 
         logger.info(f"Initialized HybridRetriever with alpha={alpha}, beta={beta}")
 
@@ -93,6 +99,7 @@ class HybridRetriever:
         filter_document: str = None,
         filter_chunk_type: str = None,
         use_rrf: bool = True,
+        expand: bool = False,
     ) -> List[RetrievalResult]:
         """
         Retrieve relevant chunks using hybrid search.
@@ -103,6 +110,8 @@ class HybridRetriever:
             filter_document: Filter by document name
             filter_chunk_type: Filter by chunk type
             use_rrf: Whether to use Reciprocal Rank Fusion
+            expand: Append the sections the results cite and the definitions
+                of terms they use, after the k results and at lower scores
 
         Returns:
             List of RetrievalResult objects
@@ -129,7 +138,116 @@ class HybridRetriever:
         else:
             combined = self._weighted_sum(vector_results, bm25_results, k=k)
 
+        if expand:
+            combined = combined + self.expand(combined, query)
         return combined
+
+    def _build_structure_index(self):
+        """Index each document's sections, schedules, and defined terms."""
+        extractor = MetadataExtractor()
+        self._first_chunk: Dict[Tuple[str, Optional[str], Optional[str]], int] = {}
+        self._definitions: Dict[
+            str, List[Tuple[re.Pattern, str, int, Optional[Tuple]]]
+        ] = defaultdict(list)
+        for index, record in enumerate(self.embedding_manager.embeddings):
+            doc = record.document_name
+            schedule = (record.metadata or {}).get("schedule")
+            sections = (record.metadata or {}).get("sections") or [
+                record.section_number
+            ]
+            self._first_chunk.setdefault((doc, schedule, None), index)
+            for section in sections:
+                if section:
+                    self._first_chunk.setdefault(
+                        (doc, schedule, section.upper()), index
+                    )
+            for definition in extractor.extract_definitions(record.text):
+                target = None
+                if definition.target_section or definition.target_schedule:
+                    target = (definition.target_schedule, definition.target_section)
+                self._definitions[doc].append(
+                    (_term_pattern(definition.term), definition.term, index, target)
+                )
+
+    def expand(
+        self,
+        results: List[RetrievalResult],
+        query: str,
+        max_cross_references: int = 3,
+        max_definitions: int = 3,
+    ) -> List[RetrievalResult]:
+        """
+        Return chunks to add after the retrieved ones, without duplicates.
+
+        Cross-references come first, in the rank order of the chunks that
+        cite them, then definitions of terms that appear in the question or
+        in a retrieved chunk, question terms first and longer terms first.
+        Each added chunk scores half the lowest retrieved score, so it sorts
+        after everything that was actually retrieved.
+        """
+        if not results:
+            return []
+        records = self.embedding_manager.embeddings
+        present = {r.chunk_id for r in results}
+        score = min(r.combined_score for r in results) / 2
+        extractor = MetadataExtractor()
+        added: List[RetrievalResult] = []
+
+        def add(index: int, kind: str, reason: str) -> bool:
+            record = records[index]
+            if record.chunk_id in present:
+                return False
+            present.add(record.chunk_id)
+            added.append(_as_result(record, score, kind, reason))
+            return True
+
+        cross_added = 0
+        for result in results:
+            if cross_added >= max_cross_references:
+                break
+            own = (result.metadata or {}).get("sections") or [result.section_number]
+            for target in extractor.extract_cross_references(result.text, own):
+                if target.startswith("Schedule "):
+                    key = (result.document_name, target.split()[1], None)
+                else:
+                    key = (result.document_name, None, target)
+                index = self._first_chunk.get(key)
+                label = target if target.startswith("Schedule") else f"s {target}"
+                if index is not None and add(
+                    index, "cross_reference", f"cited as {label} by {result.chunk_id}"
+                ):
+                    cross_added += 1
+                    if cross_added >= max_cross_references:
+                        break
+
+        candidates = []
+        documents = list(dict.fromkeys(r.document_name for r in results))
+        for doc in documents:
+            texts = " ".join(r.text for r in results if r.document_name == doc)
+            for pattern, term, index, target in self._definitions.get(doc, []):
+                in_query = bool(pattern.search(query))
+                if in_query or pattern.search(texts):
+                    candidates.append(
+                        (
+                            not in_query,
+                            -len(term.split()),
+                            -len(term),
+                            doc,
+                            term,
+                            index,
+                            target,
+                        )
+                    )
+        candidates.sort(key=lambda c: c[:3])
+        definitions_added = 0
+        for _, _, _, doc, term, index, target in candidates:
+            if definitions_added >= max_definitions:
+                break
+            if target is not None:
+                index = self._first_chunk.get((doc, target[0], target[1]), index)
+            if add(index, "definition", f"defines '{term}'"):
+                definitions_added += 1
+        return added
 
     def _bm25_search(
         self,
@@ -331,6 +449,28 @@ class HybridRetriever:
         # Sort and return top k
         scored_results.sort(key=lambda x: x[1], reverse=True)
         return [r[0] for r in scored_results[:k]]
+
+
+def _term_pattern(term: str) -> re.Pattern:
+    """Match a defined term as a whole phrase, plural allowed."""
+    flags = re.IGNORECASE if term.islower() else 0
+    return re.compile(r"(?<![\w-])" + re.escape(term) + r"s?(?![\w-])", flags)
+
+
+def _as_result(record, score: float, kind: str, reason: str) -> RetrievalResult:
+    return RetrievalResult(
+        chunk_id=record.chunk_id,
+        text=record.text,
+        section_number=record.section_number,
+        document_name=record.document_name,
+        chunk_type=record.chunk_type,
+        vector_score=0.0,
+        bm25_score=0.0,
+        combined_score=score,
+        metadata=record.metadata,
+        expansion=kind,
+        expansion_reason=reason,
+    )
 
 
 def main():
