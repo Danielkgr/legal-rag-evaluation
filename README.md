@@ -113,7 +113,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-`requirements-dev.txt` holds `pytest` and the five light packages the pipeline imports when it loads.  It leaves out `torch` and `transformers` on purpose.  One test checks that `torch` is absent, because the import tests prove nothing once it is installed, so that test fails in the full environment from step 1.
+`requirements-dev.txt` holds `pytest` and the light packages the pipeline imports when it loads.  It leaves out `torch` and `transformers` on purpose.  One test imports the pipeline in a fresh interpreter and checks that neither was loaded, so the suite passes with or without the full install.
 
 <br>
 
