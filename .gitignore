@@ -5,8 +5,11 @@ __pycache__/
 .eggs/
 build/
 dist/
-.venv/
-venv/
+.venv*/
+venv*/
+env/
+ENV/
+.conda/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
