@@ -12,6 +12,7 @@ produce describe this generator more than retrieval quality; see the README.
 import json
 import logging
 import random
+import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -52,6 +53,14 @@ class EvaluationSetGenerator:
     Generates evaluation sets for RAG systems.
     Focuses on legal document retrieval with high precision requirements.
     """
+
+    # Words that carry no searchable meaning.  A query anchored on one of these
+    # would match the target section by chance and score itself.
+    WEAK_TERMS = {
+        "not", "under", "that", "they", "their", "them", "which", "what",
+        "there", "here", "this", "with", "without", "than", "then", "some",
+        "any", "each", "other", "must", "may", "shall", "will", "would",
+    }
 
     def __init__(self, output_dir: str = "evaluation_set"):
         """
@@ -123,46 +132,87 @@ class EvaluationSetGenerator:
 
         return queries
 
-    def _generate_fact_queries(self, count: int) -> List[Query]:
-        """Generate fact-based definition and section questions."""
-        queries = []
+    def _section_terms(self) -> dict:
+        """For each section, its word terms from most to least specific.
 
-        # Sample chunks for fact queries
-        sample_chunks = random.sample(
-            list(self.chunks_by_section.values()),
-            min(count, len(self.chunks_by_section)),
+        A term is specific when it appears in few sections across the corpus, so
+        a question built on it has to find that section rather than match every
+        chunk of the Act.  Generic words that run through the legislation, the
+        section number itself, and anything that is not a word, are left out.
+        """
+        span: dict = defaultdict(set)
+        for section, chunk_list in self.chunks_by_section.items():
+            if section is None:
+                continue
+            for chunk in chunk_list:
+                for term in self._extract_key_terms(
+                    chunk.get("text", ""), max_terms=30
+                ):
+                    if (
+                        term != str(section)
+                        and term.lower() not in self.WEAK_TERMS
+                        and self._is_word(term)
+                    ):
+                        span[term].add(str(section))
+        by_section: dict = defaultdict(list)
+        for term, sections in span.items():
+            for section in sections:
+                by_section[section].append(term)
+        for section in by_section:
+            by_section[section].sort(key=lambda term: (len(span[term]), term.lower()))
+        return dict(by_section)
+
+    @staticmethod
+    def _is_word(term: str) -> bool:
+        """True when the term is letters only, with apostrophes or hyphens."""
+        return (
+            re.fullmatch(r"[^\W\d_]+(?:['‐-―][^\W\d_]+)*", term) is not None
         )
+
+    def _generate_fact_queries(self, count: int) -> List[Query]:
+        """Generate fact-based questions that require retrieving a provision.
+
+        Each question names a substantive concept drawn from a section and asks
+        what the Act says about it.  The section number is never written into the
+        query, and the concept is the term most specific to that section, so the
+        answer has to be found by retrieval rather than read off the question.  A
+        query that named its own section, such as "What is the text of Section
+        12?", would score itself and never test retrieval, so those patterns are
+        gone.
+        """
+        queries = []
+        terms_by_section = self._section_terms()
+
+        # Sample chunks for fact queries.  Chunks with no section, such as the
+        # front matter of an Act, are skipped so every question targets a real
+        # provision that retrieval can find.
+        real_sections = [
+            chunk_list
+            for section, chunk_list in self.chunks_by_section.items()
+            if section is not None
+        ]
+        sample_chunks = random.sample(
+            real_sections, min(count, len(real_sections))
+        )
+
+        patterns = [
+            lambda d, term: f"What does the {d} say about {term}?",
+            lambda d, term: f"What rule does the {d} set out for {term}?",
+        ]
 
         for i, chunk_list in enumerate(sample_chunks[:count]):
             chunk = random.choice(chunk_list)
             section = chunk.get("section_number", "unknown")
             doc = chunk.get("document_name", "unknown")
-            text = chunk.get("text", "")
 
-            # Generate different fact query patterns
-            patterns = [
-                lambda t, s: f"What is defined in Section {s}?",
-                lambda t, s: f"What does Section {s} say about",
-                lambda t, s: f"Find the definition in Section {s}",
-                lambda t, s: f"What is the text of Section {s}?",
-                lambda t, s, doc=doc: f"Explain Section {s} of the {doc}",
-            ]
-
-            # Extract key terms from text for more specific queries
-            key_terms = self._extract_key_terms(text, max_terms=3)
+            # The most specific term for this section, so the query cannot be
+            # answered without retrieving the section it points at.
+            candidates = terms_by_section.get(str(section), [])
+            term = candidates[0] if candidates else "this matter"
 
             for j, pattern in enumerate(random.sample(patterns, min(2, len(patterns)))):
                 query_id = f"fact_{i}_{j}"
-
-                if key_terms:
-                    # Use key term for more specific query
-                    query_text = (
-                        f"What is the definition of '{key_terms[0]}' in the {doc}?"
-                    )
-                    expected = [section]
-                else:
-                    query_text = pattern(text, section)
-                    expected = [section]
+                query_text = pattern(doc, term)
 
                 queries.append(
                     Query(
@@ -170,9 +220,9 @@ class EvaluationSetGenerator:
                         query_text=query_text,
                         query_type="fact",
                         difficulty="easy",
-                        expected_sections=expected,
+                        expected_sections=[section],
                         expected_documents=[doc],
-                        metadata={"pattern": str(pattern), "key_terms": key_terms},
+                        metadata={"pattern": str(pattern), "term": term},
                     )
                 )
 
