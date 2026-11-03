@@ -57,9 +57,30 @@ class EvaluationSetGenerator:
     # Words that carry no searchable meaning.  A query anchored on one of these
     # would match the target section by chance and score itself.
     WEAK_TERMS = {
-        "not", "under", "that", "they", "their", "them", "which", "what",
-        "there", "here", "this", "with", "without", "than", "then", "some",
-        "any", "each", "other", "must", "may", "shall", "will", "would",
+        "not",
+        "under",
+        "that",
+        "they",
+        "their",
+        "them",
+        "which",
+        "what",
+        "there",
+        "here",
+        "this",
+        "with",
+        "without",
+        "than",
+        "then",
+        "some",
+        "any",
+        "each",
+        "other",
+        "must",
+        "may",
+        "shall",
+        "will",
+        "would",
     }
 
     def __init__(self, output_dir: str = "evaluation_set"):
@@ -165,9 +186,7 @@ class EvaluationSetGenerator:
     @staticmethod
     def _is_word(term: str) -> bool:
         """True when the term is letters only, with apostrophes or hyphens."""
-        return (
-            re.fullmatch(r"[^\W\d_]+(?:['‐-―][^\W\d_]+)*", term) is not None
-        )
+        return re.fullmatch(r"[^\W\d_]+(?:['‐-―][^\W\d_]+)*", term) is not None
 
     def _generate_fact_queries(self, count: int) -> List[Query]:
         """Generate fact-based questions that require retrieving a provision.
@@ -191,9 +210,7 @@ class EvaluationSetGenerator:
             for section, chunk_list in self.chunks_by_section.items()
             if section is not None
         ]
-        sample_chunks = random.sample(
-            real_sections, min(count, len(real_sections))
-        )
+        sample_chunks = random.sample(real_sections, min(count, len(real_sections)))
 
         patterns = [
             lambda d, term: f"What does the {d} say about {term}?",
