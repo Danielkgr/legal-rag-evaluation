@@ -128,6 +128,10 @@ pip install -e ".[gemma]"   # drop [gemma] if you will not run the local Gemma m
 
 This installs one package, `legal_rag`, and a `legal-rag` command that opens the interactive menu.
 
+### Packaging
+
+The `legal_rag` package is distributed from source through this repository, not published to PyPI.  Install it from a clone with `pip install -e ".[gemma]"`, or build it directly with `pip install .`.  There is no release on PyPI, so `pip install legal_rag` will not find it.
+
 ### 2. Choose a backend
 
 Point the OpenAI client at a server with the standard environment variables.  Local servers ignore the key, so any placeholder value works.
