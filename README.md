@@ -2,63 +2,59 @@
 
 # Legal RAG Evaluation
 
-### Hybrid retrieval and cited answers over Australian legislation
+**Hybrid retrieval and cited answers over Australian legislation**
 
-![CI](https://img.shields.io/github/actions/workflow/status/Danielkgr/legal-rag-evaluation/ci.yml?branch=main&style=for-the-badge&label=CI) ![recorded run on 2 Acts](https://img.shields.io/badge/recorded_run-2_Acts-0969da?style=for-the-badge) ![routing probe 7 of 8 at rank 1](https://img.shields.io/badge/routing_probe-7_of_8-1a7f37?style=for-the-badge) ![backend local, OpenAI-compatible, or Claude](https://img.shields.io/badge/backend-local_%7C_OpenAI_%7C_Claude-8250df?style=for-the-badge) ![MIT licence](https://img.shields.io/badge/licence-MIT-57606a?style=for-the-badge)
+Recorded run on 2 Acts · Routing probe 7 of 8 at rank 1 · Local, OpenAI-compatible, or Claude backend · MIT licence
+
+[![CI](https://github.com/Danielkgr/legal-rag-evaluation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Danielkgr/legal-rag-evaluation/actions/workflows/ci.yml)
 
 </div>
 
-<br>
+---
 
-> Legislation is hard to retrieve from.  Provisions cite one another and defined terms reach across pages, so a chunk cut in the wrong place loses the meaning it depends on.  This pipeline keeps section boundaries intact, pairs vector search with keyword matching, and brings in the sections and definitions that a retrieved provision depends on.  **It also says plainly which of its numbers mean something.**
-
-<br>
-
-## What it is
+## About
 
 A retrieval-augmented generation (**RAG**) pipeline for Australian legislation.  It parses PDFs of Acts into section-sized chunks, builds a hybrid index, answers questions with sources through a chat interface, checks the sections each answer cites, and scores its own retrieval at the level of the Act and of the section.
 
-Embeddings come from OpenAI or any local OpenAI-compatible server.  Answers come from a local server, a local Gemma checkpoint, or Claude, which cites the exact retrieved text it relies on.  The whole pipeline can therefore run end to end with no commercial key.
+Legislation is hard to retrieve from.  Provisions cite one another and defined terms reach across pages, so a chunk cut in the wrong place loses the meaning it depends on.  This pipeline keeps section boundaries intact, pairs vector search with keyword matching, and brings in the sections and definitions that a retrieved provision depends on.
+
+Embeddings come from OpenAI or any local OpenAI-compatible server.  Answers come from a local server, a local Gemma checkpoint, or Claude, which cites the exact retrieved text it relies on.  The whole pipeline can run end to end with no commercial key.
 
 > [!CAUTION]
 > This gives no legal advice and is not a production tool.  It ships no documents, so you supply your own PDFs.
 
-It is a working prototype.  The tests cover the chunker, retrieval expansion, the menu and chat, the answer clients, the import path, and the metric conventions, and CI runs them with ruff on Python 3.10 and 3.13.  The pipeline itself is verified by running it, and one such run is committed below.
-
-<br>
+It is a working prototype.  The tests cover the chunker, retrieval expansion, the menu and chat, the answer clients, the import path, and the metric conventions, and CI runs them with ruff on Python 3.10 and 3.13.  I verify the pipeline itself by running it, and the results of one run are below.
 
 ## Results
 
-This is a real run, done on one machine with no commercial key.  [results/PROVENANCE.md](results/PROVENANCE.md) records the inputs, the compilation numbers of the two Acts, and the commands to reproduce it, and the small output files are checked in under `results/`.
+These results come from one run, which I did on one machine with no commercial key.  [results/PROVENANCE.md](results/PROVENANCE.md) records the inputs, the compilation numbers of the two Acts, and the commands to reproduce it, and the small output files are in `results/`.
 
-The corpus is two Commonwealth Acts, chosen because they are short and clearly distinct.  Indexing them produced **247 chunks**, 104 from the *Spam Act 2003* (Cth) and 143 from the *Do Not Call Register Act 2006* (Cth).
+The corpus is two Commonwealth Acts.  I chose them because they are short and clearly distinct.  Indexing them produced **247 chunks**, 104 from the *Spam Act 2003* (Cth) and 143 from the *Do Not Call Register Act 2006* (Cth).
 
 > [!IMPORTANT]
-> This run predates the rewritten chunker, which cuts each Act at different places.  The run has not been repeated with the current code, so the figures below describe the earlier version.
+> This run predates the rewritten chunker, which cuts each Act at different places.  I have not repeated the run with the current code, so the figures below describe the earlier version.
 
 ### Retrieval
 
-Eight cross-Act questions were written by hand before any retrieval ran, and each was labelled with the Act that answers it.  The probe asks only whether the hybrid retriever sends each query to the right Act.
+I wrote eight cross-Act questions by hand before any retrieval ran, and labelled each with the Act that answers it.  The probe asks only whether the hybrid retriever sends each query to the right Act.
 
 | Measure | Result |
 |---|:--:|
 | Correct Act at rank 1 | **7 / 8** |
 | Correct Act within the top 3 | **8 / 8** |
 
-The single miss at rank 1 is a civil-penalty question.  Both Acts impose civil penalties, so the top hit is defensibly ambiguous, and the right Act still appears at ranks 2 and 3.  See `results/retrieval_probe.json`.  This is document-level routing on eight points.  It is not a benchmark and says nothing about accuracy at section level or on open questions.
+The single miss at rank 1 is a civil-penalty question.  Both Acts impose civil penalties, so the top hit is defensibly ambiguous, and the right Act still appears at ranks 2 and 3.  See `results/retrieval_probe.json`.  This is document-level routing on eight points.  It is not a benchmark.  It says nothing about accuracy at section level or on open questions.
 
 ### Generation
 
-Two questions went through the full path of retrieval, prompt, and generation against a local OpenAI-compatible model.  One produced a correctly cited answer, pointing to s 11 of the *Do Not Call Register Act 2006* (Cth) for the prohibition and s 10 for the outline.  The other declined.  Its top chunks did not surface the operative provision, and the assistant reported that instead of inventing a citation.  See `results/chat_demo.json`.
+I put two questions through the full path of retrieval, prompt, and generation against a local OpenAI-compatible model.  One produced a correctly cited answer, pointing to s 11 of the *Do Not Call Register Act 2006* (Cth) for the prohibition and s 10 for the outline.  The other declined.  Its top chunks did not surface the operative provision, and the assistant reported that instead of inventing a citation.  See `results/chat_demo.json`.
 
 > [!WARNING]
-> The built-in evaluation numbers are not the headline.  Of the 100 queries `evaluate.py` generates, 40 are templates filled from sampled chunks, and each marks every chunk of its source Act relevant.  The other 60 are Fair Work Act questions written into the code, and on this corpus, which holds no Fair Work Act, they have no relevant chunk at all.  The metric code scores such a query as recall 1.0 and MAP 1.0 by convention, so recall@1 cannot fall below 0.60 and precision@1 cannot rise above 0.40, whatever the retriever does.  The printed figures for this run (recall@1 0.60, MAP 0.62, precision@1 0.36) describe the query generator rather than retrieval quality.  [results/PROVENANCE.md](results/PROVENANCE.md) sets out the arithmetic, and `tests/test_eval_generator.py` and `tests/test_eval_metrics.py` pin the behaviour down.
-
-<br>
+> The built-in evaluation numbers are not the headline.  Of the 100 queries `evaluate.py` generates, 40 are templates filled from sampled chunks, and each marks every chunk of its source Act relevant.  The other 60 are Fair Work Act questions written into the code, and on this corpus, which holds no Fair Work Act, they have no relevant chunk at all.  The metric code scores such a query as recall 1.0 and MAP 1.0 by convention, so recall@1 cannot fall below 0.60 and precision@1 cannot rise above 0.40, whatever the retriever does.  The printed figures for this run (recall@1 0.60, MAP 0.62, precision@1 0.36) describe the query generator, not retrieval quality.  [results/PROVENANCE.md](results/PROVENANCE.md) sets out the arithmetic, and `tests/test_eval_generator.py` and `tests/test_eval_metrics.py` test this behaviour.
 
 ## Grounded answers with Claude
 
-With `CHAT_BACKEND=claude`, each retrieved chunk goes to Claude as its own document, titled with the Act and the provision, such as "Do Not Call Register Act 2006, s 11", with citations switched on.  Claude's answer comes back with the exact span of each document it relies on, so every citation points at text that was actually retrieved.  The chat prints those passages under the answer.
+With `CHAT_BACKEND=claude`, each retrieved chunk goes to Claude as its own document, titled with the Act and the provision, such as "Do Not Call Register Act 2006, s 11", with citations switched on.  Claude's answer comes back with the exact span of each document it relies on, so every citation points at retrieved text.  The chat prints those passages under the answer.
 
 | Setting | Value |
 |---|---|
@@ -67,7 +63,7 @@ With `CHAT_BACKEND=claude`, each retrieved chunk goes to Claude as its own docum
 | Sampling | No temperature or top-p.  Opus 5.5 rejects them, so repeated runs vary. |
 | Refusals | A refusal is reported as a refusal, with its category, never as an answer.  A truncated answer says it was cut off. |
 | Fallback | Server-side fallback is on, because this is a chat answer for a person.  If Opus 5.5's safety classifiers decline a question, the API reruns it on the model Anthropic recommends for that refusal category, and the answer records that a fallback model served it. |
-| Price | $4 per million input tokens and $20 per million output tokens for Opus 5.5.  No cost per question has been measured here. |
+| Price | $4 per million input tokens and $20 per million output tokens for Opus 5.5.  I have not measured a cost per question. |
 
 ```bash
 export ANTHROPIC_API_KEY='sk-ant-...'
@@ -76,9 +72,7 @@ python -m legal_rag.pipeline --mode chat --backend claude --query "May a telemar
 ```
 
 > [!NOTE]
-> The Claude path has not been run against the live API from this repository.  The tests drive the real `anthropic` SDK against a mocked HTTP transport, including responses with citations, a refusal, a truncated answer, and a fallback.  The commands above are what to run with a key.
-
-<br>
+> I have not run the Claude path against the live API from this repository.  The tests drive the real `anthropic` SDK against a mocked HTTP transport, including responses with citations, a refusal, a truncated answer, and a fallback.  The commands above are what to run with a key.
 
 ## How it works
 
@@ -112,8 +106,6 @@ Legal questions need both kinds of search.  "What is unfair dismissal" is a sema
 
 Fixed-size chunking breaks provisions mid-section and makes chunks whose meaning depends on text outside them.  The chunker instead cuts at section headings, so each section becomes one unit, and splits a section longer than 2,000 characters at its subsections, with every piece keeping the section number.
 
-<br>
-
 ## Quick start
 
 You need Python 3.10 or later, and your own PDFs.  The repository ships no documents, so put the legislation you want to index in `data/raw/`, which git ignores.
@@ -130,7 +122,7 @@ This installs one package, `legal_rag`, and a `legal-rag` command that opens the
 
 ### Packaging
 
-The `legal_rag` package is distributed from source through this repository, not published to PyPI.  Install it from a clone with `pip install -e ".[gemma]"`, or build it directly with `pip install .`.  There is no release on PyPI, so `pip install legal_rag` will not find it.
+I distribute the `legal_rag` package from source through this repository.  Install it from a clone with `pip install -e ".[gemma]"`, or build it directly with `pip install .`.  There is no release on PyPI, so `pip install legal_rag` will not find it.
 
 ### 2. Choose a backend
 
@@ -164,9 +156,7 @@ ruff check . && ruff format --check .
 pytest
 ```
 
-`requirements-dev.txt` holds `pytest`, `ruff`, and the light packages the code imports, including `anthropic` and `httpx2` for the Claude tests, which mock the HTTP layer.  It leaves out `torch` and `transformers` on purpose.  One test imports the pipeline in a fresh interpreter and checks that neither was loaded, so the suite passes with or without the full install.  No test needs a model, an API key, or the network.
-
-<br>
+`requirements-dev.txt` holds `pytest`, `ruff`, and the light packages the code imports, including `anthropic` and `httpx2` for the Claude tests, which mock the HTTP layer.  It deliberately leaves out `torch` and `transformers`.  One test imports the pipeline in a fresh interpreter and checks that neither was loaded, so the suite passes with or without the full install.  No test needs a model, an API key, or the network.
 
 ## Usage
 
@@ -210,7 +200,7 @@ Processing writes `data/processed/chunks.json` and an embedding index at `data/p
 python -m legal_rag.evaluate --pdfs data/raw/fair_work_act_2009.pdf --num-queries 100 --eval-dir evaluation_set
 ```
 
-The runner generates three kinds of test query, with relevance labels assigned by rule rather than checked by a person.  Read the warning under [Results](#results) before relying on its scores.  The report says how many queries had no relevant chunk.
+The runner generates three kinds of test query, and assigns relevance labels by rule.  No person has checked them.  Read the warning under [Results](#results) before relying on its scores.  The report says how many queries had no relevant chunk.
 
 | Query type | Share | How it is written | What counts as relevant |
 |---|:--:|---|---|
@@ -229,10 +219,10 @@ The runner generates three kinds of test query, with relevance labels assigned b
 
 The routing probe asks only whether the right Act comes back.  The section-level harness asks whether the right sections do.  Each question in a gold set names the Act and the sections that answer it, and the harness reports precision@k, recall@k, and MRR at section level, next to the probe's document-level hit rate, for k of 1, 3, 5, and 10.
 
-[gold/fair_work_act_2009.json](gold/fair_work_act_2009.json) holds 36 draft questions on the *Fair Work Act 2009* (Cth), covering the National Employment Standards, termination and redundancy, general protections, unfair dismissal, bullying orders, and records.  Every gold section number was checked against the AustLII page for that section of the consolidated Act, and each question records that page as its source.
+[gold/fair_work_act_2009.json](gold/fair_work_act_2009.json) holds 36 draft questions on the *Fair Work Act 2009* (Cth), covering the National Employment Standards, termination and redundancy, general protections, unfair dismissal, bullying orders, and records.  I checked every gold section number against the AustLII page for that section of the consolidated Act, and each question records that page as its source.
 
 > [!IMPORTANT]
-> The question set is provisional and needs the owner's review before any score on it is reported.  Neither the set nor the harness has been run.  The Act's PDF and an embedding model could not be reached from the environment where they were built, so there are no section-level numbers yet.
+> The question set is provisional and needs my review before I report any score on it.  I have not run the set or the harness.  The environment where I built them could not reach the Act's PDF or an embedding model, so there are no section-level numbers yet.
 
 To run it, set the embedding variables from step 2 of the quick start, then:
 
@@ -256,9 +246,7 @@ python -m legal_rag.evaluation.section_eval --gold gold/fair_work_act_2009.json
 | **MRR** | Mean reciprocal rank of the first chunk from a gold section |
 | **Document hit@k** | Share of questions with a chunk from the right Act in the top k, as in the routing probe |
 
-Retrieval is scored without cross-reference or definition expansion, and a chunk counts for every section whose heading falls inside it.
-
-<br>
+The harness scores retrieval without cross-reference or definition expansion, and a chunk counts for every section whose heading falls inside it.
 
 ## Reference
 
@@ -295,7 +283,7 @@ Retrieval is scored without cross-reference or definition expansion, and a chunk
 
 ### In code
 
-`FairWorkRAGPipeline` accepts `output_dir` and `embedding_model` (default `text-embedding-3-large`).  Retrieval fuses the vector and BM25 rankings with reciprocal rank fusion, which has no weights to tune, so the unused `retrieval_alpha` and `retrieval_beta` options are gone.
+`FairWorkRAGPipeline` accepts `output_dir` and `embedding_model` (default `text-embedding-3-large`).  Retrieval fuses the vector and BM25 rankings with reciprocal rank fusion, which has no weights to tune, so I removed the unused `retrieval_alpha` and `retrieval_beta` options.
 
 ### Stack
 
@@ -306,8 +294,6 @@ Retrieval is scored without cross-reference or definition expansion, and a chunk
 | **Embeddings and hosted chat** | `openai` |
 | **Claude answers with citations** | `anthropic` |
 | **Local chat** | `transformers` running a Gemma checkpoint, `google/gemma-4-12B-it` by default |
-
-<br>
 
 ## Layout
 
@@ -346,8 +332,6 @@ legal-rag-evaluation/
   requirements.txt             Runtime dependencies
   requirements-dev.txt         Test environment, without torch
 ```
-
-<br>
 
 ## Licence
 
